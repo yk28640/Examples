@@ -1,0 +1,106 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PlatformTarget>x64</PlatformTarget>
+		<Platforms>AnyCPU;x64;ARM64</Platforms>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+		<WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+		<WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+		<NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+		<WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+	  <NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+	  <WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+		<NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+		<WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+	  <NoWarn>1701;1702;8604;8602;0168;8600;MSB3245</NoWarn>
+	  <WarningLevel>3</WarningLevel>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
+	  <EmbeddedResource Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
+	  <None Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="BouncyCastle.Crypto">
+			<HintPath>sdk\BouncyCastle.Crypto.dll</HintPath>
+			<Private></Private>
+		</Reference>
+		<Reference Include="Newtonsoft.Json">
+			<HintPath>sdk\Newtonsoft.Json.dll</HintPath>
+		</Reference>
+		<Reference Include="OMSp_ASOM">
+			<HintPath>sdk\OMSp_ASOM.dll</HintPath>
+		</Reference>
+		<Reference Include="OMSp_managed_linux">
+			<HintPath>sdk\OMSp_managed_linux.dll</HintPath>
+		</Reference>
+		<Reference Include="SIMATICAutomationToolAPI">
+			<HintPath>sdk\SIMATICAutomationToolAPI.dll</HintPath>
+		</Reference>
+		<Reference Include="SIMATICAutomationToolAPITrial">
+			<HintPath>sdk\SIMATICAutomationToolAPITrial.dll</HintPath>
+		</Reference>
+		<Reference Include="SIMATICAutomationToolOSLCommon">
+			<HintPath>sdk\SIMATICAutomationToolOSLCommon.dll</HintPath>
+		</Reference>
+		<Reference Include="SIMATICAutomationToolOSLWindows">
+			<HintPath>sdk\SIMATICAutomationToolOSLWindows.dll</HintPath>
+		</Reference>
+		<Reference Include="SnmpSharpNet">
+			<HintPath>sdk\SnmpSharpNet.dll</HintPath>
+		</Reference>
+		<Reference Include="SIMATICAutomationToolOSLLinux">
+			<HintPath>sdk\SIMATICAutomationToolOSLLinux.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<Target Name="PreBuildWindows" BeforeTargets="PreBuildEvent" Condition="'$(OS.Contains(`Windows`))' == 'true'">
+		<Exec Command="copy sdk\Ijwhost.dll $(OutDir)\Ijwhost.dll&#xD;&#xA;copy sdk\wrapper_native.dll $(OutDir)\wrapper_native.dll" />
+		<Exec Command="copy sdk\DeviceManagerClient.dll $(OutDir)\DeviceManagerClient.dll" />
+	</Target>
+	
+	<Target Name="PreBuildLinux" BeforeTargets="PreBuildEvent" Condition="'$(OS.Contains(`Windows`))' == 'false'">
+		<Exec Command="cp sdk/*.* $(OutDir)/" />
+	</Target>
+
+	<Target Name="CleanWindows" AfterTargets="Clean" Condition="'$(OS.Contains(`Windows`))' == 'true'">
+		<Delete Files="$(OutDir)\wrapper_native.dll" />
+		<Delete Files="$(OutDir)\Ijwhost.dll" />
+		<Delete Files="$(OutDir)\DeviceManagerClient.dll" />
+	</Target>
+
+	<Target Name="CleanLinux" AfterTargets="Clean" Condition="'$(OS.Contains(`Windows`))' == 'false'">
+		<Delete Files="$(OutDir)/libhmiwrapper.so" />
+		<Delete Files="$(OutDir)/libwrapper_native.so" />
+		<Delete Files="$(OutDir)/Newtonsoft.Json.dll" />
+		<Delete Files="$(OutDir)/System.CodeDom.dll" />
+		<Delete Files="$(OutDir)/System.Management.dll" />
+	</Target>
+	
+</Project>

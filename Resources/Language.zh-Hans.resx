@@ -1,0 +1,339 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="articleNumberLabel" xml:space="preserve">
+    <value>订货号：</value>
+  </data>
+  <data name="basicDeviceInfo" xml:space="preserve">
+    <value>	2：读取 CPU 信息</value>
+  </data>
+  <data name="certificateChanged" xml:space="preserve">
+    <value>检测到证书更改</value>
+  </data>
+  <data name="certificateOptionPrompt" xml:space="preserve">
+    <value>证书选项： </value>
+  </data>
+  <data name="changeOperatingState" xml:space="preserve">
+    <value>	4：更改工作状态</value>
+  </data>
+  <data name="commandError" xml:space="preserve">
+    <value>错误：输入所需选项的编号或按“Ctrl+C”退出。</value>
+  </data>
+  <data name="commandQuestion" xml:space="preserve">
+    <value>选择要执行的命令：</value>
+  </data>
+  <data name="communicationsDisabledWarning" xml:space="preserve">
+    <value>警告：通信已被禁用。选择一个新设备或输入相同的设备并选择“始终”以启用通信。按“Ctrl+C”退出。</value>
+  </data>
+  <data name="configurationLabel" xml:space="preserve">
+    <value>组态：</value>
+  </data>
+  <data name="connectionAdvanced" xml:space="preserve">
+    <value>Advanced authorization detected. Choose a authorization option:</value>
+  </data>
+  <data name="connectionAdvanced1" xml:space="preserve">
+    <value>1. Log on with access level password</value>
+  </data>
+  <data name="connectionAdvanced2" xml:space="preserve">
+    <value>2. Project user</value>
+  </data>
+  <data name="connectionAdvanced3" xml:space="preserve">
+    <value>3. Anonymous user</value>
+  </data>
+  <data name="connectionAdvanced31" xml:space="preserve">
+    <value>Advanced authorization Option: </value>
+  </data>
+  <data name="connectionAdvancedUserName" xml:space="preserve">
+    <value>Enter a Project user name: </value>
+  </data>
+  <data name="connectionAdvancedUserNameError" xml:space="preserve">
+    <value>ERROR: Project user field cannot be empty.</value>
+  </data>
+  <data name="deviceNotSupportedError" xml:space="preserve">
+    <value>错误：不支持此设备。此示例程序仅支持 CPU。</value>
+  </data>
+  <data name="DeviceTypeLabel" xml:space="preserve">
+    <value>设备类型：</value>
+  </data>
+  <data name="duplicateIPError" xml:space="preserve">
+    <value>错误：检测到重复的 IP。</value>
+  </data>
+  <data name="enterGatewayQuestion" xml:space="preserve">
+    <value>输入新网关：</value>
+  </data>
+  <data name="enterIPQuestion" xml:space="preserve">
+    <value>输入新 IP 地址：</value>
+  </data>
+  <data name="enterPasswordQuestion" xml:space="preserve">
+    <value>输入具有最低读写权限的 CPU 密码以继续：</value>
+  </data>
+  <data name="enterSubnetQuestion" xml:space="preserve">
+    <value>输入新子网：</value>
+  </data>
+  <data name="exit" xml:space="preserve">
+    <value>	9：退出</value>
+  </data>
+  <data name="firmwareUpdate" xml:space="preserve">
+    <value>	7：更新固件</value>
+  </data>
+  <data name="firmwareVersionLabel" xml:space="preserve">
+    <value>固件版本：</value>
+  </data>
+  <data name="gatewayPrompt" xml:space="preserve">
+    <value>网关：  </value>
+  </data>
+  <data name="hardwareNumberLabel" xml:space="preserve">
+    <value>硬件版本：</value>
+  </data>
+  <data name="identify" xml:space="preserve">
+    <value>	1：识别</value>
+  </data>
+  <data name="identityCrisisError" xml:space="preserve">
+    <value>错误：识别检测到的危机。输入新 IP 地址。</value>
+  </data>
+  <data name="insertionError" xml:space="preserve">
+    <value>错误：无法将设备插入到项目中。</value>
+  </data>
+  <data name="insufficientAccessError" xml:space="preserve">
+    <value>错误：访问权限不足。输入至少具有读写权限的密码。</value>
+  </data>
+  <data name="internalError" xml:space="preserve">
+    <value>内部错误，报告给西门子支持中心。</value>
+  </data>
+  <data name="invalidGateway" xml:space="preserve">
+    <value>错误：指定的网关无效。</value>
+  </data>
+  <data name="invalidIP" xml:space="preserve">
+    <value>错误：指定的 IP 地址无效。</value>
+  </data>
+  <data name="invalidSubnet" xml:space="preserve">
+    <value>错误：指定的子网无效。</value>
+  </data>
+  <data name="ipError" xml:space="preserve">
+    <value>错误：未找到 IP 地址。</value>
+  </data>
+  <data name="ipPrompt" xml:space="preserve">
+    <value>IP：</value>
+  </data>
+  <data name="MACLabel" xml:space="preserve">
+    <value>MAC 地址：</value>
+  </data>
+  <data name="moduleInfo" xml:space="preserve">
+    <value>	3：读取模块信息</value>
+  </data>
+  <data name="moduleLabel" xml:space="preserve">
+    <value>模块</value>
+  </data>
+  <data name="nameLabel" xml:space="preserve">
+    <value>名称：</value>
+  </data>
+  <data name="networkInterfacePrompt" xml:space="preserve">
+    <value>网络接口：</value>
+  </data>
+  <data name="nicError" xml:space="preserve">
+    <value>错误：输入所需网络接口的编号或按“Ctrl + C”退出。</value>
+  </data>
+  <data name="noModulesFoundError" xml:space="preserve">
+    <value>错误：未找到模块。</value>
+  </data>
+  <data name="noNICOptions" xml:space="preserve">
+    <value>没有可用的网络接口卡 (NIC)。该应用程序至少需要一个 NIC，因此将退出。</value>
+  </data>
+  <data name="notSupportedError" xml:space="preserve">
+    <value>错误：不支持此设备。输入 CPU 的 IP 地址</value>
+  </data>
+  <data name="operatingStateLabel" xml:space="preserve">
+    <value>操作状态：</value>
+  </data>
+  <data name="operatingStateQuestion" xml:space="preserve">
+    <value>选择要切换到的操作状态：</value>
+  </data>
+  <data name="parsingError" xml:space="preserve">
+    <value>错误：无法解析输入。</value>
+  </data>
+  <data name="passwordChange" xml:space="preserve">
+    <value>检测到密码更改</value>
+  </data>
+  <data name="passwordPrompt" xml:space="preserve">
+    <value>密码： </value>
+  </data>
+  <data name="pickNewDevice" xml:space="preserve">
+    <value>	8：断开连接并选择新设备</value>
+  </data>
+  <data name="PROFINETLable" xml:space="preserve">
+    <value>PROFINET 名称：</value>
+  </data>
+  <data name="PROFINETQuestion" xml:space="preserve">
+    <value>输入新 PROFINET 名称：</value>
+  </data>
+  <data name="progressBar" xml:space="preserve">
+    <value>处理：</value>
+  </data>
+  <data name="promptForCommand" xml:space="preserve">
+    <value>命令： </value>
+  </data>
+  <data name="runChoice" xml:space="preserve">
+    <value>	1：运行</value>
+  </data>
+  <data name="selectNICQuestion" xml:space="preserve">
+    <value>选择网络接口：</value>
+  </data>
+  <data name="serialNumberLabel" xml:space="preserve">
+    <value>序列号：</value>
+  </data>
+  <data name="setIP" xml:space="preserve">
+    <value>	5：设置 IP 地址</value>
+  </data>
+  <data name="setIPNotSupported" xml:space="preserve">
+    <value>错误：此设备不支持设置 IP 地址。</value>
+  </data>
+  <data name="setPROFINET" xml:space="preserve">
+    <value>	6：设置 PROFINET 名称</value>
+  </data>
+  <data name="slotLabel" xml:space="preserve">
+    <value>插槽：</value>
+  </data>
+  <data name="statePrompt" xml:space="preserve">
+    <value>状态： </value>
+  </data>
+  <data name="stopChoice" xml:space="preserve">
+    <value>	2：停止</value>
+  </data>
+  <data name="targetIPAddressPrompt" xml:space="preserve">
+    <value>输入要连接的 CPU 的 IP 地址：</value>
+  </data>
+  <data name="TIAPVersionLabel" xml:space="preserve">
+    <value>TIA Portal 版本：</value>
+  </data>
+  <data name="TLSAlwaysOption" xml:space="preserve">
+    <value>	1：始终</value>
+  </data>
+  <data name="TLSNeverOption" xml:space="preserve">
+    <value>	2：从不</value>
+  </data>
+  <data name="TLSQuestion" xml:space="preserve">
+    <value>检测到 TLS 安全连接。选择证书信任选项：</value>
+  </data>
+  <data name="UDPFilePathPrompt" xml:space="preserve">
+    <value>文件路径： </value>
+  </data>
+  <data name="UDPFilePathQuestion" xml:space="preserve">
+    <value>输入新固件文件 (.upd) 的路径：</value>
+  </data>
+</root>

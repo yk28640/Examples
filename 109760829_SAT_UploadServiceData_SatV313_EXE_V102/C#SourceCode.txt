@@ -1,0 +1,146 @@
+using System;
+using System.Collections.Generic;
+using Siemens.Automation.AutomationTool.API; // SIMATIC Automation Tool V3.1 SP3
+using System.Net.NetworkInformation;
+
+namespace UploadServiceData
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine(" ------------------------------------------------------------------");
+            Console.WriteLine(" UploadServiceData for SIMATIC Automation Tool V3.1 SP3");
+            Network myNetwork = new Network();
+            List<String> interfaces = new List<String>();
+            List<DiagnosticsItem> aLogs = new List<DiagnosticsItem>();
+            Result resultCallAPI = myNetwork.QueryNetworkInterfaceCards(out interfaces);
+            if (resultCallAPI.Succeeded)
+            {
+                // listing all network interface cards
+                Console.WriteLine(" ------------------------------------------------------------------");
+                Console.WriteLine(" " + interfaces.Count.ToString() + " network cards are found:");
+                for (Int32 index = 0; index < interfaces.Count; index++)
+                {
+                    String strInterfaceName = interfaces[index];
+                    Console.WriteLine(" card[" + index + "] = " + strInterfaceName);
+                }
+                Console.WriteLine(" ------------------------------------------------------------------");
+            }
+            if (!((args.Length == 4) || (args.Length == 5)))
+            {
+                Console.WriteLine("  WRONG NUMBER OF ARGUMENTS !!!");
+                return;
+            }
+            Console.WriteLine(" arguments = " + args.Length.ToString());
+            int x = Int32.Parse(args[0]);
+            if ((x >= 0) && (x <= interfaces.Count - 1))
+            {
+                resultCallAPI = myNetwork.SetCurrentNetworkInterface(interfaces[x]);
+                if (resultCallAPI.Succeeded)
+                {
+                    // setting the network card (argument0)
+                    IProfinetDeviceCollection devices; // definition "devices"
+                    Console.WriteLine(" scan network card " + x.ToString());
+                    IScanErrorCollection scanErrors = myNetwork.ScanNetworkDevices(out devices); // scan network
+
+                    IProfinetDevice dev = null; ;
+
+                    if (resultCallAPI.Succeeded)
+                    {
+                        if ((args[1] == "IP") || (args[1] == "MAC"))
+                        {
+                            if (args[1] == "IP") // identify via IP
+                            {
+                                // convert ip string to Uint
+                                System.Net.IPAddress ip = System.Net.IPAddress.Parse(args[2]);
+                                byte[] bytes = ip.GetAddressBytes();
+                                Array.Reverse(bytes);
+                                uint encodedIp = BitConverter.ToUInt32(bytes, 0); // encodedIP from argument2
+                                Result retVal = devices.InsertDeviceByIP(0, encodedIp); // insert device by IP
+                                Console.WriteLine(" search IP address " + ip.ToString());
+                                dev = devices.FindDeviceByIP(encodedIp);
+                            }
+                            if (args[1] == "MAC") // identify via MAC
+                            {
+                                // check length
+                                if (args[2].Length != 12)
+                                {
+                                    Console.WriteLine("  WRONG LENGTH OF MAC ADDRESS !!!");
+                                    return;
+                                }
+                                PhysicalAddress newAddress = PhysicalAddress.Parse(args[2]);
+                                if (PhysicalAddress.None.Equals(newAddress))
+                                    return;
+
+                                byte[] bytes = newAddress.GetAddressBytes();
+
+                                byte[] bytes8 = new byte[8];
+                                bytes8[0] = 0;
+                                bytes8[1] = 0;
+
+                                bytes.CopyTo(bytes8, 2);
+
+                                Array.Reverse(bytes8);
+
+                                ulong targetMAC = BitConverter.ToUInt64(bytes8, 0); // targetMAC from argument2
+                                Console.WriteLine(" search MAC address " + newAddress.ToString());
+                                dev = devices.FindDeviceByMAC(targetMAC);
+                            }
+                            if (dev != null)
+                            {
+                                // check if device is CPU
+                                ICPU devAsCpu = dev as ICPU; // definition "devAsCpu"
+                                Console.WriteLine(" check if device is CPU");
+                                if (devAsCpu != null)
+                                {
+                                    EncryptedString eStringPWD = new EncryptedString("");
+                                    if (args.Length == 5)
+                                        eStringPWD = new EncryptedString(args[4]);
+
+                                    devAsCpu.SetPassword(eStringPWD); // password request
+                                    devAsCpu.Selected = true;
+                                    // upload service data to destination (args[3])
+                                    Console.WriteLine(" upload service data to destination " + @args[3]);
+                                    resultCallAPI = devAsCpu.UploadServiceData(@args[3]);
+                                    if (resultCallAPI.Succeeded)
+                                    {
+                                        Console.WriteLine("  Succeeded !!!");
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("  NOT Succeeded !!!");
+                                        Console.WriteLine("  Check if NOT SUPPORTED FIRMWARE is PROJECTED");
+                                        Console.WriteLine("  ErrorCode = " + resultCallAPI.Error.ToString());
+                                    }
+                                }
+                                else
+                                    Console.WriteLine("  DEVICE ISN'T CPU !!!");
+                            }
+                            else
+                            {
+                                Console.WriteLine("  ADDRESS NOT FOUND !!!");
+                                Console.WriteLine("  CPU IS NOT ACCESSABLE or");
+                                Console.WriteLine("  SAT LICENSE IS NOT PRESENT");
+                            }
+                        }
+                        else
+                            Console.WriteLine("  ARGUMENT 1 HAS TO BE 'IP' OR 'MAC' !!!");
+                    }
+                    else
+                    {
+                        Console.WriteLine("  NOT Succeeded !!!");
+                        foreach (ScanErrorEvent scanErrorEvent in scanErrors)
+                        {
+                            // process scan error events
+                            Console.WriteLine(" ErrorCode = " + scanErrorEvent.Code.ToString());
+                        }
+                    }
+                }
+            }
+            else
+                Console.WriteLine("  INTERFACE CARD NUMBER DOESN'T EXIST !!!");
+            Console.WriteLine(" ------------------------------------------------------------------");
+        }
+    }
+}

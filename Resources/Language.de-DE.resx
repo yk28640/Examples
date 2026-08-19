@@ -1,0 +1,342 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="articleNumberLabel" xml:space="preserve">
+    <value>Artikelnummer:</value>
+  </data>
+  <data name="basicDeviceInfo" xml:space="preserve">
+    <value>	2: CPU-Informationen lesen</value>
+  </data>
+  <data name="certificateChanged" xml:space="preserve">
+    <value>Änderung in Zertifikat erkannt</value>
+  </data>
+  <data name="certificateOptionPrompt" xml:space="preserve">
+    <value>Zertifikatoption: </value>
+  </data>
+  <data name="changeOperatingState" xml:space="preserve">
+    <value>	4: Betriebszustand ändern</value>
+  </data>
+  <data name="commandError" xml:space="preserve">
+    <value>FEHLER: Geben Sie die Nummer der  gewünschten Option ein oder drücken Sie 'Strg+C' zum Verlassen.</value>
+  </data>
+  <data name="commandQuestion" xml:space="preserve">
+    <value>Wählen Sie den Befehl, den Sie ausführen möchten:</value>
+  </data>
+  <data name="communicationsDisabledWarning" xml:space="preserve">
+    <value>WARNUNG: Die Kommunikation wurde deaktiviert. Wählen Sie ein neues Gerät aus oder geben Sie dasselbe Gerät ein und wählen Sie 'Immer', um die Kommunikation zu aktivieren. Drücken Sie 'Strg+C' zum Verlassen.</value>
+  </data>
+  <data name="configurationLabel" xml:space="preserve">
+    <value>Konfiguration:</value>
+  </data>
+  <data name="connectionAdvanced" xml:space="preserve">
+    <value>Erweiterte Autorisierung erkannt. Wählen Sie eine Autorisierungsoption:</value>
+  </data>
+  <data name="connectionAdvanced1" xml:space="preserve">
+    <value>1. Melden Sie sich mit dem Passwort für die Zugriffsstufe an</value>
+  </data>
+  <data name="connectionAdvanced2" xml:space="preserve">
+    <value>2. Projektbenutzer</value>
+  </data>
+  <data name="connectionAdvanced3" xml:space="preserve">
+    <value>3. Anonymer Benutzer</value>
+  </data>
+  <data name="connectionAdvanced31" xml:space="preserve">
+    <value>Option für erweiterte Autorisierung: </value>
+  </data>
+  <data name="connectionAdvancedUserName" xml:space="preserve">
+    <value>Geben Sie einen Projektbenutzernamen ein: </value>
+  </data>
+  <data name="connectionAdvancedUserNameError" xml:space="preserve">
+    <value>FEHLER: Feld für Projektbenutzer darf nicht leer sein.</value>
+  </data>
+  <data name="deviceNotSupportedError" xml:space="preserve">
+    <value>FEHLER: Dieses Gerät wird nicht unterstützt. Dieses Beispielprogramm unterstützt nur CPUs.</value>
+  </data>
+  <data name="DeviceTypeLabel" xml:space="preserve">
+    <value>Gerätetyp:</value>
+  </data>
+  <data name="duplicateIPError" xml:space="preserve">
+    <value>FEHLER: Doppelte IP erkannt.</value>
+  </data>
+  <data name="emptyPasswordError" xml:space="preserve">
+    <value>FEHLER: Passwortfeld darf nicht leer sein.</value>
+  </data>
+  <data name="enterGatewayQuestion" xml:space="preserve">
+    <value>Geben Sie das neue Gateway ein:</value>
+  </data>
+  <data name="enterIPQuestion" xml:space="preserve">
+    <value>Geben Sie die neue IP-Adresse ein:</value>
+  </data>
+  <data name="enterPasswordQuestion" xml:space="preserve">
+    <value>Um fortzufahren, geben Sie ein CPU-Passwort mit einem Minimum an Schreib-Lese-Rechten ein:</value>
+  </data>
+  <data name="enterSubnetQuestion" xml:space="preserve">
+    <value>Geben Sie das neue Subnetz ein:</value>
+  </data>
+  <data name="exit" xml:space="preserve">
+    <value>	9: Verlassen</value>
+  </data>
+  <data name="firmwareUpdate" xml:space="preserve">
+    <value>	7: Firmware aktualisieren</value>
+  </data>
+  <data name="firmwareVersionLabel" xml:space="preserve">
+    <value>Firmware-Version:</value>
+  </data>
+  <data name="gatewayPrompt" xml:space="preserve">
+    <value>Gateway:  </value>
+  </data>
+  <data name="hardwareNumberLabel" xml:space="preserve">
+    <value>Hardware-Version:</value>
+  </data>
+  <data name="identify" xml:space="preserve">
+    <value>	1: Identifizieren</value>
+  </data>
+  <data name="identityCrisisError" xml:space="preserve">
+    <value>FEHLER: Identifizierungskrise erkannt. Geben Sie eine neue IP-Adresse ein.</value>
+  </data>
+  <data name="insertionError" xml:space="preserve">
+    <value>FEHLER: Gerät konnte nicht in das Projekt eingefügt werden.</value>
+  </data>
+  <data name="insufficientAccessError" xml:space="preserve">
+    <value>FEHLER: Unzureichender Zugriff. Geben Sie ein Passwort mit mindestens Schreib-Lese-Zugriff ein.</value>
+  </data>
+  <data name="internalError" xml:space="preserve">
+    <value>Interner Fehler, Meldung an Siemens Support Center notwendig.</value>
+  </data>
+  <data name="invalidGateway" xml:space="preserve">
+    <value>FEHLER: Ungültiges Gateway angegeben.</value>
+  </data>
+  <data name="invalidIP" xml:space="preserve">
+    <value>FEHLER: Ungültige IP-Adresse angegeben.</value>
+  </data>
+  <data name="invalidSubnet" xml:space="preserve">
+    <value>FEHLER: Ungültiges Subnetz angegeben.</value>
+  </data>
+  <data name="ipError" xml:space="preserve">
+    <value>FEHLER: IP-Adresse nicht gefunden.</value>
+  </data>
+  <data name="ipPrompt" xml:space="preserve">
+    <value>IP:</value>
+  </data>
+  <data name="MACLabel" xml:space="preserve">
+    <value>MAC-Adresse:</value>
+  </data>
+  <data name="moduleInfo" xml:space="preserve">
+    <value>	3: Modulinformationen lesen</value>
+  </data>
+  <data name="moduleLabel" xml:space="preserve">
+    <value>Modul</value>
+  </data>
+  <data name="nameLabel" xml:space="preserve">
+    <value>Name:</value>
+  </data>
+  <data name="networkInterfacePrompt" xml:space="preserve">
+    <value>Netzwerkschnittstelle:</value>
+  </data>
+  <data name="nicError" xml:space="preserve">
+    <value>FEHLER: Geben Sie die Nummer für die gewünschte Netzwerkschnittstelle ein oder drücken Sie 'Strg + C' zum Verlassen.</value>
+  </data>
+  <data name="noModulesFoundError" xml:space="preserve">
+    <value>FEHLER: Keine Module gefunden.</value>
+  </data>
+  <data name="noNICOptions" xml:space="preserve">
+    <value>Es sind keine Network Interface Cards (NIC) verfügbar. Die Anwendung erfordert mindestens eine NIC und wird deshalb beendet.</value>
+  </data>
+  <data name="notSupportedError" xml:space="preserve">
+    <value>FEHLER: Dieses Gerät wird nicht unterstützt. Geben Sie die IP-Adresse einer CPU ein.</value>
+  </data>
+  <data name="operatingStateLabel" xml:space="preserve">
+    <value>Betriebszustand:</value>
+  </data>
+  <data name="operatingStateQuestion" xml:space="preserve">
+    <value>Wählen Sie den Betriebszustand, den Sie ändern möchten:</value>
+  </data>
+  <data name="parsingError" xml:space="preserve">
+    <value>FEHLER: Parsen des Eingangs nicht möglich.</value>
+  </data>
+  <data name="passwordChange" xml:space="preserve">
+    <value>Passwortänderung erkannt</value>
+  </data>
+  <data name="passwordPrompt" xml:space="preserve">
+    <value>Passwort: </value>
+  </data>
+  <data name="pickNewDevice" xml:space="preserve">
+    <value>	8: Trennen und neues Gerät auswählen</value>
+  </data>
+  <data name="PROFINETLable" xml:space="preserve">
+    <value>PROFINET-Name:</value>
+  </data>
+  <data name="PROFINETQuestion" xml:space="preserve">
+    <value>Geben Sie den neuen PROFINET-Namen ein:</value>
+  </data>
+  <data name="progressBar" xml:space="preserve">
+    <value>Verarbeitung läuft.</value>
+  </data>
+  <data name="promptForCommand" xml:space="preserve">
+    <value>Befehl: </value>
+  </data>
+  <data name="runChoice" xml:space="preserve">
+    <value>	1: RUN</value>
+  </data>
+  <data name="selectNICQuestion" xml:space="preserve">
+    <value>Wählen Sie eine Netzwerkschnittstelle:</value>
+  </data>
+  <data name="serialNumberLabel" xml:space="preserve">
+    <value>Seriennummer:</value>
+  </data>
+  <data name="setIP" xml:space="preserve">
+    <value>	5: IP-Adresse einstellen</value>
+  </data>
+  <data name="setIPNotSupported" xml:space="preserve">
+    <value>FEHLER: Einstellen der IP-Adresse wird für dieses Gerät nicht unterstützt.</value>
+  </data>
+  <data name="setPROFINET" xml:space="preserve">
+    <value>	6: PROFINET-Namen einstellen</value>
+  </data>
+  <data name="slotLabel" xml:space="preserve">
+    <value>Steckplatz:</value>
+  </data>
+  <data name="statePrompt" xml:space="preserve">
+    <value>Zustand: </value>
+  </data>
+  <data name="stopChoice" xml:space="preserve">
+    <value>	2: STOP</value>
+  </data>
+  <data name="targetIPAddressPrompt" xml:space="preserve">
+    <value>Geben Sie die IP-Adresse der zu verbindenden CPU ein:</value>
+  </data>
+  <data name="TIAPVersionLabel" xml:space="preserve">
+    <value>Version TIA Portal:</value>
+  </data>
+  <data name="TLSAlwaysOption" xml:space="preserve">
+    <value>	1: Immer</value>
+  </data>
+  <data name="TLSNeverOption" xml:space="preserve">
+    <value>	2: Niemals</value>
+  </data>
+  <data name="TLSQuestion" xml:space="preserve">
+    <value>Sichere TLS-Verbindung erkannt. Wählen Sie eine Vertrauensoption für das Zertifikat:</value>
+  </data>
+  <data name="UDPFilePathPrompt" xml:space="preserve">
+    <value>Dateipfad: </value>
+  </data>
+  <data name="UDPFilePathQuestion" xml:space="preserve">
+    <value>Geben Sie den Pfad zu der neuen Frmware-Datei (.upd) ein:</value>
+  </data>
+</root>

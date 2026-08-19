@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32407.343
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATExample", "SATExample.csproj", "{9A78EDCB-434C-4019-B10B-883DB7F41085}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FAF9244F-274A-4DCD-88A9-1446C0E5B107}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9A78EDCB-434C-4019-B10B-883DB7F41085}.Debug|x64.ActiveCfg = Debug|x64
+		{9A78EDCB-434C-4019-B10B-883DB7F41085}.Debug|x64.Build.0 = Debug|x64
+		{9A78EDCB-434C-4019-B10B-883DB7F41085}.Release|x64.ActiveCfg = Release|x64
+		{9A78EDCB-434C-4019-B10B-883DB7F41085}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0785464C-64B5-420F-B6EA-B23643EB9CFB}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SATExample": {
+      "commandName": "Project",
+      "commandLineArgs": "\"RunMode\" \"Intel(R) Ethernet Connection (7) I219-LM.TCPIP.Auto.1\" \"192.168.2.24\""
+    }
+  }
+}

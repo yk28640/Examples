@@ -1,0 +1,131 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "SIMATICAutomationToolOSLCommon/1.0.0": {
+        "dependencies": {
+          "OMSp_managed_linux": "1600.9.115"
+        },
+        "runtime": {
+          "SIMATICAutomationToolOSLCommon.dll": {}
+        }
+      },
+      "OMSp_managed_linux/1600.9.115": {
+        "runtime": {
+          "lib/net8.0/OMSp_ASOM.dll": {
+            "assemblyVersion": "12.3.2.0",
+            "fileVersion": "12.3.2.0"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/debian.11-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "debian.11-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/debian.12-arm64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "debian.12-arm64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/debian.12-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "debian.12-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/linux-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "linux-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/ubuntu.22.04-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "ubuntu.22.04-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/ubuntu.24.04-arm64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "ubuntu.24.04-arm64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/ubuntu.24.04-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "ubuntu.24.04-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/win-x64/lib/net8.0/OMSp_managed_linux.dll": {
+            "rid": "win-x64",
+            "assetType": "runtime",
+            "assemblyVersion": "16.0.0.9",
+            "fileVersion": "16.0.0.9"
+          },
+          "runtimes/debian.11-x64/native/libwrapper_native.so": {
+            "rid": "debian.11-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/debian.12-arm64/native/libwrapper_native.so": {
+            "rid": "debian.12-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/debian.12-x64/native/libwrapper_native.so": {
+            "rid": "debian.12-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/linux-x64/native/libwrapper_native.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/ubuntu.22.04-x64/native/libwrapper_native.so": {
+            "rid": "ubuntu.22.04-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/ubuntu.24.04-arm64/native/libwrapper_native.so": {
+            "rid": "ubuntu.24.04-arm64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/ubuntu.24.04-x64/native/libwrapper_native.so": {
+            "rid": "ubuntu.24.04-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/native/wrapper_native.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SIMATICAutomationToolOSLCommon/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "OMSp_managed_linux/1600.9.115": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-qU43poc1vR4LuiTszuwsWRs3yASOJxYQFlKN4Kv5KK5WmU/TXft5GPnP9i3oI24caBgNjaR4gveaaepFFwE+/Q==",
+      "path": "omsp_managed_linux/1600.9.115",
+      "hashPath": "omsp_managed_linux.1600.9.115.nupkg.sha512"
+    }
+  }
+}
