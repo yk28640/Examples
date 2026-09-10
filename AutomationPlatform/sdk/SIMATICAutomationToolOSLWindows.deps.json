@@ -1,0 +1,53 @@
+{
+  "runtimeTarget": {
+    "name": "net8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    "net8.0": {
+      "SIMATICAutomationToolOSLWindows/1.0.0": {
+        "dependencies": {
+          "BouncyCastle.Cryptography": "2.0.0.0",
+          "SIMATICAutomationToolOSLCommon": "500.400.1270.1"
+        },
+        "runtime": {
+          "SIMATICAutomationToolOSLWindows.dll": {}
+        }
+      },
+      "BouncyCastle.Cryptography/2.0.0.0": {
+        "runtime": {
+          "BouncyCastle.Cryptography.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.4.0.33771"
+          }
+        }
+      },
+      "SIMATICAutomationToolOSLCommon/500.400.1270.1": {
+        "runtime": {
+          "SIMATICAutomationToolOSLCommon.dll": {
+            "assemblyVersion": "500.400.1270.1",
+            "fileVersion": "500.400.1270.1"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "SIMATICAutomationToolOSLWindows/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "BouncyCastle.Cryptography/2.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "SIMATICAutomationToolOSLCommon/500.400.1270.1": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
