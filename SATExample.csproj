@@ -47,6 +47,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Include=".github\copilot-instructions.md" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Reference Include="BouncyCastle.Crypto">
 			<HintPath>sdk\BouncyCastle.Crypto.dll</HintPath>
 			<Private></Private>
