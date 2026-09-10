@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="9.*" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Reference Include="BouncyCastle.Cryptography">
+      <HintPath>sdk\BouncyCastle.Cryptography.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OMSp_ASOM">
+      <HintPath>sdk\OMSp_ASOM.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OMSp_managed_linux">
+      <HintPath>sdk\OMSp_managed_linux.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SharpSnmpLib">
+      <HintPath>sdk\SharpSnmpLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SIMATICAutomationToolAPI">
+      <HintPath>sdk\SIMATICAutomationToolAPI.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SIMATICAutomationToolOSLCommon">
+      <HintPath>sdk\SIMATICAutomationToolOSLCommon.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SIMATICAutomationToolOSLWindows">
+      <HintPath>sdk\SIMATICAutomationToolOSLWindows.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Ensure native/managed SDK files are copied to output so runtime can load them -->
+  <ItemGroup>
+    <None Include="sdk\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SatSdkFacade.cs" />
+  </ItemGroup>
+</Project>

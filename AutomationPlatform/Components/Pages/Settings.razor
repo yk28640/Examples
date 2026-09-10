@@ -1,0 +1,57 @@
+@page "/settings"
+@rendermode InteractiveServer
+@inject AutomationSettings AutomationConfig
+@inject ISnackbar Snackbar
+
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>设置</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">设置</MudText>
+
+<MudPaper Class="pa-4" MaxWidth="MaxWidth.Medium">
+    <MudTextField @bind-Value="projectPath"
+                  Label="项目工作目录"
+                  Variant="Variant.Outlined"
+                  HelperText="请输入用于在线比较的 TIA 项目文件路径"
+                  FullWidth="true" />
+
+    <MudNumericField @bind-Value="compareTimeoutMinutes"
+                     Label="比较时间（分钟）"
+                     Variant="Variant.Outlined"
+                     Min="1"
+                     Max="1440"
+                     Immediate="true"
+                     Class="mt-4" />
+
+    <MudButton Color="Color.Primary"
+               Variant="Variant.Filled"
+               Disabled="@(!CanSave)"
+               OnClick="Save">
+        保存设置
+    </MudButton>
+</MudPaper>
+
+@code {
+    private string projectPath = string.Empty;
+    private int compareTimeoutMinutes;
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(projectPath) &&
+        compareTimeoutMinutes is >= 1 and <= 1440;
+
+    protected override void OnInitialized()
+    {
+        projectPath = AutomationConfig.ProjectPath;
+        compareTimeoutMinutes = AutomationConfig.CompareTimeoutMinutes;
+    }
+
+    private void Save()
+    {
+        AutomationConfig.ProjectPath = projectPath.Trim();
+        AutomationConfig.CompareTimeoutMinutes = compareTimeoutMinutes;
+        Snackbar.Add("设置已保存。", Severity.Success);
+    }
+}

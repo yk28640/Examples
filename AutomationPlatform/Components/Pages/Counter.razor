@@ -1,0 +1,355 @@
+﻿@page "/Discovery"
+@rendermode InteractiveServer
+
+@using Siemens.Automation.AutomationTool.API
+@using System.Diagnostics
+@using System.IO
+@using System.Threading.Tasks
+
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>网卡列表</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">本机网络接口</MudText>
+
+<MudText Typo="Typo.body1" Class="mb-4">参考 StateMachine.SetNIC，列出当前电脑可用的网络适配器</MudText>
+
+<MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="isLoading" OnClick="LoadNetworkInterfaces">{(isLoading?"正在枚举...":"列出网卡")}</MudButton>
+
+<MudPaper Class="pa-4 mt-4">
+    @if (isLoading)
+    {
+        <MudText Typo="Typo.body2">正在查询...</MudText>
+    }
+    else if (errorMessage != null)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Error">@errorMessage</MudText>
+    }
+    else if (networkInterfaces == null)
+    {
+        <MudText Typo="Typo.body2">尚未查询。</MudText>
+    }
+    else if (networkInterfaces.Count == 0)
+    {
+        <MudText Typo="Typo.body2">未发现任何网络接口。</MudText>
+    }
+    else
+        {
+        <MudList T="string" Dense="true">
+            @for (int i = 0; i < networkInterfaces.Count; i++)
+            {
+                var index = i;
+                var item = networkInterfaces[i]; 
+                @* 捕获变量，避免闭包问题 *@
+                <MudListItem OnClick="@(() => OnItemClick(item))">@(index). @item</MudListItem>
+            }
+        </MudList>
+    }
+</MudPaper>
+
+<MudPaper Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">扫描到的设备</MudText>
+    @if (isScanning)
+    {
+        <MudText Typo="Typo.body2">正在扫描设备...</MudText>
+    }
+    else if (scanErrorMessage != null)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Error">@scanErrorMessage</MudText>
+    }
+    else if (scannedDevices == null)
+    {
+        <MudText Typo="Typo.body2">请选择网卡开始扫描。</MudText>
+    }
+    else if (scannedDevices.Count == 0)
+    {
+        <MudText Typo="Typo.body2">未扫描到设备。</MudText>
+    }
+    else
+    {
+        <MudList T="ScannedDevice" Dense="true">
+            @foreach (var device in scannedDevices)
+            {
+                <MudListItem>
+                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                        <MudText>@device.DisplayName</MudText>
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@isComparing"
+                                   OnClick="@(() => CompareDeviceAsync(device))">
+                            @(isComparing ? "比较中..." : "在线比较")
+                        </MudButton>
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+    }
+</MudPaper>
+
+@if (compareErrorMessage != null || compareResultMessage != null)
+{
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">在线程序比较结果</MudText>
+        @if (compareErrorMessage != null)
+        {
+            <MudText Color="Color.Error" Typo="Typo.body2">@compareErrorMessage</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Style="white-space: pre-line">@compareResultMessage</MudText>
+        }
+    </MudPaper>
+}
+
+    @code {
+    /// <summary>
+    /// SIMATIC Automation Tool .NET API 的精简调用外观（Facade）。
+    /// 典型用法：
+    SatFacade sat = new SatFacade();
+
+
+    /// </summary>
+
+    private bool isLoading = false;
+    private string? errorMessage;
+    private List<string>? networkInterfaces;
+
+    private string? selectedItem = null;
+    private bool isScanning;
+    private string? scanErrorMessage;
+    private List<ScannedDevice>? scannedDevices;
+    private bool isComparing;
+    private string? compareErrorMessage;
+    private string? compareResultMessage;
+
+    private const string TiaProjectPath = @"E:\projects\V25075_L1_PLC07_20260505_1141_修改了画面\V25075_L1_PLC07_20260505_1141.ap20";
+    private const string TiaDeviceName = "ET 200SP station_4";
+    private const string CompareResultFilePath = @"E:\Temp\OpennessServices\compare-result.txt";
+
+    private async Task OnItemClick(string item)
+    {
+        selectedItem = item;
+        isScanning = true;
+        scanErrorMessage = null;
+        scannedDevices = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var scanResult = await Task.Run(() =>
+            {
+                var network = new Network();
+                network.SetCurrentNetworkInterface(item);
+                IProfinetDeviceCollection devices;
+                var errors = network.ScanNetworkDevices(out devices, "192.168.98.[0-255]");
+                return (Devices: devices, Errors: errors);
+            });
+
+            scannedDevices = GetDevices(scanResult.Devices)
+                .Select((device, index) => new ScannedDevice
+                {
+                    DisplayName = $"{index}. {FormatDevice(device)}"
+                })
+                .ToList();
+
+            if (scanResult.Errors.Failed)
+            {
+                scanErrorMessage = scanResult.Errors.ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            scanErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isScanning = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static List<object> GetDevices(IProfinetDeviceCollection devices)
+    {
+        var result = new List<object>();
+        var getEnumerator = devices.GetType().GetMethod("GetEnumerator");
+        if (getEnumerator?.Invoke(devices, null) is System.Collections.IEnumerator enumerator)
+        {
+            while (enumerator.MoveNext())
+            {
+                if (enumerator.Current != null)
+                {
+                    result.Add(enumerator.Current);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static string FormatDevice(object device)
+    {
+        var propertyNames = new[] { "IPAddress", "MACAddress", "ProfinetName", "DeviceName", "ModuleName", "OrderNumber" };
+        var values = propertyNames
+            .Select(name =>
+            {
+                var property = device.GetType().GetProperty(name);
+                if (property == null)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    var value = property.GetValue(device);
+                    if (value is uint ipAddress && name == "IPAddress")
+                    {
+                        value = $"{(ipAddress >> 24) & 0xFF}.{(ipAddress >> 16) & 0xFF}.{(ipAddress >> 8) & 0xFF}.{ipAddress & 0xFF}";
+                    }
+
+                    return value == null ? null : $"{name}: {value}";
+                }
+                catch
+                {
+                    return null;
+                }
+            })
+            .Where(value => value != null)
+            .ToList();
+
+        return values.Count > 0 ? string.Join("，", values) : device.ToString() ?? "未知设备";
+    }
+
+    private async Task CompareDeviceAsync(ScannedDevice device)
+    {
+        isComparing = true;
+        compareErrorMessage = null;
+        compareResultMessage = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var executablePath = FindOpennessServicesExecutable();
+            if (executablePath == null)
+            {
+                throw new FileNotFoundException("未找到 OpennessServices.exe，请先生成 OpennessServices 项目。");
+            }
+
+            if (File.Exists(CompareResultFilePath))
+            {
+                File.Delete(CompareResultFilePath);
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(executablePath)!
+            };
+            startInfo.ArgumentList.Add("compare");
+            startInfo.ArgumentList.Add(TiaProjectPath);
+            startInfo.ArgumentList.Add(TiaDeviceName);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("无法启动 OpennessServices.exe。");
+
+            var errorTask = process.StandardError.ReadToEndAsync();
+            var timeoutAt = DateTime.UtcNow.AddMinutes(2);
+
+            while (!File.Exists(CompareResultFilePath) && DateTime.UtcNow < timeoutAt)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+
+            if (!File.Exists(CompareResultFilePath))
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+
+                throw new TimeoutException("等待比较结果文件超过 2 分钟，操作已超时。");
+            }
+
+            compareResultMessage = await File.ReadAllTextAsync(CompareResultFilePath);
+
+            if (process.HasExited)
+            {
+                var error = await errorTask;
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    compareResultMessage += $"\n{error.Trim()}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            compareErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isComparing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static string? FindOpennessServicesExecutable()
+    {
+        var root = AppContext.BaseDirectory;
+        var candidates = new[]
+        {
+            Path.GetFullPath(Path.Combine(root, "..", "..", "..", "..", "OpennessServices", "bin", "Debug", "OpennessServices.exe")),
+            Path.GetFullPath(Path.Combine(root, "..", "..", "..", "..", "OpennessServices", "bin", "Release", "OpennessServices.exe"))
+        };
+
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
+    private sealed class ScannedDevice
+    {
+        public string DisplayName { get; init; } = string.Empty;
+    }
+
+    private async Task LoadNetworkInterfaces()
+    {
+        isLoading = true;
+        errorMessage = null;
+        networkInterfaces = null;
+        StateHasChanged();
+       
+        await Task.Run(() =>
+        {
+            try
+            {
+                var net = new Network();
+                Result res = net.QueryNetworkInterfaceCards(out List<string>? nics);
+                if (res.Succeeded && nics != null)
+                {
+                    networkInterfaces = new List<string>(nics);
+                }
+                else
+                {
+                    // 尝试从 Result 中获取错误信息（若可用），否则使用通用消息
+                    string msg = "无法枚举网卡";
+                    try
+                    {
+                        // 若 Result 有 Message 属性或 ToString 重写，可用其信息
+                        msg = res.ToString() ?? msg;
+                    }
+                    catch { }
+                    errorMessage = msg;
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = ex.Message;
+            }
+        });
+
+        isLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}
