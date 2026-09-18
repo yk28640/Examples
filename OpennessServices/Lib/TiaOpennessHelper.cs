@@ -292,7 +292,7 @@ namespace OpennessServices
                 var onlineProvider = deviceItem?.GetService<OnlineProvider>();
                 if (onlineProvider == null)
                     throw new InvalidOperationException($"设备 {device.Name} 不支持在线服务。");
-
+            
                 var knowHowProtectedBlockNames = GetAllBlocks(plcsoftware.BlockGroup)
                                                 .Where(b => b.IsKnowHowProtected)
                                                 .Select(b => b.Name)
@@ -301,7 +301,8 @@ namespace OpennessServices
                 SetConnectionWithSlot(onlineProvider);
                 var result = plcsoftware.CompareToOnline();
 
-                var details = result.RootElement == null
+            WriteResultOffical(result.RootElement, string.Empty); //only show in console    
+            var details = result.RootElement == null
                     ? string.Empty
                     : WriteNonIdenticalResult(result.RootElement, string.Empty);
 
@@ -322,7 +323,7 @@ namespace OpennessServices
                     + "Know-how 保护的块: 无";
             }
 
-                var summary = new OnlineCompareSummary
+            var summary = new OnlineCompareSummary
                 {
                     Success = result.RootElement != null,
                     State = result.RootElement == null
@@ -332,21 +333,25 @@ namespace OpennessServices
                 };
 
                 Log($"在线程序比较完成: {summary.State}");
-                return summary;
+            tiaPortal.Projects[0].Close();
+          
+            tiaPortal.Dispose();
+            tiaPortal = null;
+            return summary;
             }
             finally
             {
                 CloseProject();
             }
         }
-
+            
         private static DeviceItem FindDeviceItemWithSoftware(Device device)
         {
             foreach (DeviceItem item in device.DeviceItems)
             {
                 var found = FindDeviceItemWithSoftware(item);
                 if (found != null) return found;
-            }
+        }
             return null;
         }
 
@@ -580,6 +585,7 @@ namespace OpennessServices
                 ConfigurationPcInterface pcInterface = mode.PcInterfaces[2];
 #endif
 
+                // or network pc interface that is connected to plc
 
                 ConfigurationTargetInterface slot = pcInterface.TargetInterfaces.Find("1 X2");
                 m_OnlineConfigurationDelegate = OnlineCallBackMethod;
@@ -593,9 +599,10 @@ namespace OpennessServices
             {
                 throw new InvalidOperationException("无法建立在线连接。", ex);
             }
-            
-        }
 
+                Console.WriteLine(ex.Message);
+            }
+            
         private void OnlineCallBackMethod(OnlineConfiguration onlineConfiguration)
         {
             var tlsCommunication = onlineConfiguration as TlsVerificationConfiguration;

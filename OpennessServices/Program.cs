@@ -89,7 +89,7 @@ namespace OpennessServices
                     
                     Environment.ExitCode = GetBool(compareResult, "Success") ? 0 : 1;
                     Environment.Exit(Environment.ExitCode);
-                }
+            }
             }
             catch (Exception ex)
             {
