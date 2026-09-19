@@ -9,10 +9,13 @@ using Siemens.Engineering.Online.Configurations;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.Tags;
+using Siemens.Engineering.Upload;
+using Siemens.Engineering.Upload.Configurations;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security;
 using System.Text;
 
 namespace OpennessServices
@@ -333,10 +336,6 @@ namespace OpennessServices
                 };
 
                 Log($"在线程序比较完成: {summary.State}");
-            tiaPortal.Projects[0].Close();
-          
-            tiaPortal.Dispose();
-            tiaPortal = null;
             return summary;
             }
             finally
@@ -600,7 +599,6 @@ namespace OpennessServices
                 throw new InvalidOperationException("无法建立在线连接。", ex);
             }
 
-                Console.WriteLine(ex.Message);
             }
             
         private void OnlineCallBackMethod(OnlineConfiguration onlineConfiguration)
@@ -756,6 +754,84 @@ namespace OpennessServices
             }
 
         }
+
+        public void UploadStation(string directoryPath, string stationName)
+        {
+            var project = CreateProject(directoryPath, stationName);
+            StationUploadProvider uploadProvider = project.GetService<StationUploadProvider>();
+            if (uploadProvider != null)
+            {
+                //创建地址对象
+                ConnectionConfiguration configuration = uploadProvider.Configuration;
+                ConfigurationMode configurationMode = configuration.Modes.Find("PN/IE");
+                ConfigurationPcInterface pcInterface = configurationMode.PcInterfaces[2];
+                //ConfigurationPcInterface pcInterface = configurationMode.PcInterfaces.Find("Intel(R)
+                //Ethernet Connection I217 - LM", 1);
+                //"Create an address. This "ConfigurationAddress" is used as parameter for upload."
+                ConfigurationAddress uploadAddress = pcInterface.Addresses.Create("192.168.98.137");
+                m_OnlineConfigurationDelegate = OnlineCallBackMethod;
+                configuration.OnlineLegitimation += m_OnlineConfigurationDelegate;
+
+
+                //调用上传方法
+                UploadConfigurationDelegate preUploadDelegate = PreConfigureUpload;
+                UploadResult result = uploadProvider.StationUpload(uploadAddress, preUploadDelegate);
+                // The uploaded device
+                Device uploadedObject = result.UploadedStation;
+                if (uploadedObject == null)
+                {
+                    throw new Exception("上传操作失败。");
+                }
+
+
+
+            }
+
+        }
+
+        private static void PreConfigureUpload(UploadConfiguration UploadConfiguration)
+        {
+            ModuleReadAccessPassword moduleReadAccessPassword = UploadConfiguration as
+            ModuleReadAccessPassword;
+            if (moduleReadAccessPassword != null)
+            {
+                string passWD = "passWD";
+                var password = new SecureString();
+                foreach (var c in passWD)
+                    password.AppendChar(c);
+                moduleReadAccessPassword.SetPassword(password);
+                return;
+            }
+            ModuleWriteAccessPassword moduleWriteAccessPassword = UploadConfiguration as
+            ModuleWriteAccessPassword;
+            if (moduleWriteAccessPassword != null)
+            {
+                string passWD = "passWD";
+                var password = new SecureString();
+                foreach (var c in passWD)
+                    password.AppendChar(c);
+                moduleWriteAccessPassword.SetPassword(password);
+                return;
+            }
+
+            bool isSecureCommunication = moduleReadAccessPassword.IsSecureCommunication;
+            if (isSecureCommunication == false)
+            {
+                // Secure communication with (Tls handshake)
+                //TlsVerificationConfiguration verificationConfiguration = UploadConfiguration as TlsVerificationConfiguration;
+
+                //if (verificationConfiguration != null)
+                //{
+                //    verificationConfiguration.CurrentSelection = TlsVerificationConfigurationSelection.Trusted;
+
+
+                //}
+            }
+
+
+            throw new NotSupportedException(); // Exception thrown in the delagate will cancel upload
+        }
+
         #endregion
 
         #region 工具方法

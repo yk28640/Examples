@@ -41,9 +41,31 @@ namespace OpennessServices
             //argsSet[2] = "ET 200SP station_4";
             //RunCompare(argsSet);
 
+            //调试上传程序
+            string[] argsSet = new string[3];
+            argsSet[1] = @"E:\TMP\";
+            argsSet[2] = "mynewUploadedStation";
+            RunUpload(argsSet);
 
             Console.WriteLine("用法:");
             Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称>");
+        }
+        private static void RunUpload(string[] args)
+        {
+            using (var tia = new TiaOpennessClient(withUserInterface: true))
+            {
+
+                if (args.Length < 3)
+                {
+                    WriteResultFile("Failed", false, "参数不足，需要工程路径和设备名称。");
+                    Environment.ExitCode = 2;
+                    return;
+                }
+
+                var directoryPath = args[1];
+                var projectName = args[2];
+                tia.UploadStation(directoryPath, projectName);
+            }
         }
 
         private static void RunCompare(string[] args)
