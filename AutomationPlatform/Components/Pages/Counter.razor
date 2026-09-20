@@ -81,6 +81,12 @@
                                    OnClick="@(() => CompareDeviceAsync(device))">
                             @(isComparing ? "比较中..." : "在线比较")
                         </MudButton>
+                         <MudButton Color="Color.Secondary"
+                                    Variant="Variant.Outlined"
+                                    Disabled="@isUploading"
+                                    OnClick="UploadDeviceAsync">
+                             @(isUploading ? "上传中..." : "上传项目")
+                         </MudButton>
                     </div>
                 </MudListItem>
             }
@@ -99,6 +105,21 @@
         else
         {
             <MudText Typo="Typo.body2" Style="white-space: pre-line">@compareResultMessage</MudText>
+        }
+    </MudPaper>
+}
+
+@if (uploadErrorMessage != null || uploadResultMessage != null)
+{
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" GutterBottom="true">上传项目结果</MudText>
+        @if (uploadErrorMessage != null)
+        {
+            <MudText Color="Color.Error" Typo="Typo.body2">@uploadErrorMessage</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Style="white-space: pre-line">@uploadResultMessage</MudText>
         }
     </MudPaper>
 }
@@ -123,6 +144,9 @@
     private bool isComparing;
     private string? compareErrorMessage;
     private string? compareResultMessage;
+    private bool isUploading;
+    private string? uploadErrorMessage;
+    private string? uploadResultMessage;
 
     private const string TiaProjectPath = @"E:\projects\V25075_L1_PLC07_20260505_1141_修改了画面\V25075_L1_PLC07_20260505_1141.ap20";
     private const string TiaDeviceName = "ET 200SP station_4";
@@ -292,6 +316,73 @@
         finally
         {
             isComparing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task UploadDeviceAsync()
+    {
+        isUploading = true;
+        uploadErrorMessage = null;
+        uploadResultMessage = null;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var executablePath = FindOpennessServicesExecutable();
+            if (executablePath == null)
+            {
+                throw new FileNotFoundException("未找到 OpennessServices.exe，请先生成 OpennessServices 项目。");
+            }
+
+            var uploadDirectory = @"E:\TMP\";
+            var projectName = "mynewUploadedStation_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(executablePath)!
+            };
+            startInfo.ArgumentList.Add("upload");
+            startInfo.ArgumentList.Add(uploadDirectory);
+            startInfo.ArgumentList.Add(projectName);
+
+            using var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("无法启动 OpennessServices.exe。");
+
+            var errorTask = process.StandardError.ReadToEndAsync();
+            var timeoutAt = DateTime.UtcNow.AddMinutes(2);
+
+            while (!process.HasExited && DateTime.UtcNow < timeoutAt)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                throw new TimeoutException("等待上传项目超过 2 分钟，操作已超时。");
+            }
+
+            var error = (await errorTask).Trim();
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(error)
+                    ? $"上传项目失败，退出码: {process.ExitCode}。"
+                    : error);
+            }
+
+            uploadResultMessage = $"项目上传成功。保存目录: {uploadDirectory}{projectName}";
+        }
+        catch (Exception ex)
+        {
+            uploadErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isUploading = false;
             await InvokeAsync(StateHasChanged);
         }
     }

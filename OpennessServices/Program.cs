@@ -35,6 +35,12 @@ namespace OpennessServices
                 return;
             }
 
+            if (args.Length > 0 && string.Equals(args[0], "upload", StringComparison.OrdinalIgnoreCase))
+            {
+                RunUpload(args);
+                return;
+            }
+
             //调试比较程序
             //string[] argsSet = new string[3];
             //argsSet[1] = @"E:\projects\V25075_L1_PLC07_20260505_1141_修改了画面\V25075_L1_PLC07_20260505_1141.ap20";
@@ -42,29 +48,39 @@ namespace OpennessServices
             //RunCompare(argsSet);
 
             //调试上传程序
-            string[] argsSet = new string[3];
-            argsSet[1] = @"E:\TMP\";
-            argsSet[2] = "mynewUploadedStation";
-            RunUpload(argsSet);
+            //string[] argsSet = new string[3];
+            //argsSet[1] = @"E:\TMP\";
+            //argsSet[2] = "mynewUploadedStation_" + DateTime.Now.ToString("yyyyMMddHHmmss");
+            //RunUpload(argsSet);
 
             Console.WriteLine("用法:");
             Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称>");
+            Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称>");
         }
         private static void RunUpload(string[] args)
         {
-            using (var tia = new TiaOpennessClient(withUserInterface: true))
+            try
             {
-
                 if (args.Length < 3)
                 {
-                    WriteResultFile("Failed", false, "参数不足，需要工程路径和设备名称。");
+                    Console.Error.WriteLine("参数不足，需要目标目录和工程名称。");
                     Environment.ExitCode = 2;
                     return;
                 }
 
                 var directoryPath = args[1];
                 var projectName = args[2];
-                tia.UploadStation(directoryPath, projectName);
+                using (var tia = new TiaOpennessClient(withUserInterface: true))
+                {
+                    tia.UploadStation(directoryPath, projectName);
+                }
+
+                Environment.ExitCode = 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"上传项目失败: {ex.GetType().Name}: {ex.Message}");
+                Environment.ExitCode = 1;
             }
         }
 

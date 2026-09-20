@@ -44,6 +44,8 @@
 	  <Compile Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
 	  <EmbeddedResource Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
 	  <None Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
+	  <Compile Remove="AutomationPlatform\**" />
+	  <Compile Remove="OpennessServices\**" />
 	</ItemGroup>
 
 	<ItemGroup>
