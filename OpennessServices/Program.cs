@@ -16,6 +16,7 @@ namespace OpennessServices
     internal static class Program
     {
         private const string ResultFilePath = @"E:\Temp\OpennessServices\compare-result.txt";
+        private const string UploadResultFilePath = @"E:\Temp\OpennessServices\upload-result.txt";
         static void Main(string[] args)
         {
            // string applicationPath = @"E:\\Program Files\\SIMATIC Automation Tool SDK Trial\\OpennessServices\\bin\\Debug\\OpennessServices.exe";
@@ -70,15 +71,20 @@ namespace OpennessServices
 
                 var directoryPath = args[1];
                 var projectName = args[2];
+                DeleteResultFile(UploadResultFilePath);
                 using (var tia = new TiaOpennessClient(withUserInterface: true))
                 {
                     tia.UploadStation(directoryPath, projectName);
+                    WriteResultFile(UploadResultFilePath, "Uploaded", true,
+                        $"项目上传成功。保存目录: {directoryPath}{projectName}");
                 }
 
                 Environment.ExitCode = 0;
             }
             catch (Exception ex)
             {
+                WriteResultFile(UploadResultFilePath, "Failed", false,
+                    ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
                 Console.Error.WriteLine($"上传项目失败: {ex.GetType().Name}: {ex.Message}");
                 Environment.ExitCode = 1;
             }
@@ -100,7 +106,7 @@ namespace OpennessServices
 
             if (args.Length < 3)
             {
-                WriteResultFile("Failed", false, "参数不足，需要工程路径和设备名称。");
+                WriteResultFile(ResultFilePath, "Failed", false, "参数不足，需要工程路径和设备名称。");
                 Environment.ExitCode = 2;
                 return;
             }
@@ -123,7 +129,7 @@ namespace OpennessServices
                     
                     // 输出 JSON 到标准输出，并写入结果文件
                     // 假定 compareResult 包含 Success, State, Details 字段；根据实际 API 调整字段名
-                    WriteResultFile(GetString(compareResult, "State"), GetBool(compareResult, "Success"), GetString(compareResult, "Details"));
+                    WriteResultFile(ResultFilePath, GetString(compareResult, "State"), GetBool(compareResult, "Success"), GetString(compareResult, "Details"));
                     
                     Environment.ExitCode = GetBool(compareResult, "Success") ? 0 : 1;
                     Environment.Exit(Environment.ExitCode);
@@ -131,7 +137,7 @@ namespace OpennessServices
             }
             catch (Exception ex)
             {
-                WriteResultFile("Failed", false, ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
+                WriteResultFile(ResultFilePath, "Failed", false, ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
                
                 Environment.ExitCode = 1;
             }
@@ -183,11 +189,11 @@ namespace OpennessServices
         /// <param name="state"></param>
         /// <param name="success"></param>
         /// <param name="details"></param>
-        private static void WriteResultFile(string state, bool success, string details)
+        private static void WriteResultFile(string resultFilePath, string state, bool success, string details)
         {
             try
             {
-                var directory = Path.GetDirectoryName(ResultFilePath);
+                var directory = Path.GetDirectoryName(resultFilePath);
                 if (!string.IsNullOrEmpty(directory))
                 {
                     Directory.CreateDirectory(directory);
@@ -200,19 +206,27 @@ namespace OpennessServices
                     "Details=" + Environment.NewLine +
                     (details ?? string.Empty);
 
-                var temporaryFile = ResultFilePath + ".tmp";
+                var temporaryFile = resultFilePath + ".tmp";
                 File.WriteAllText(temporaryFile, content, new System.Text.UTF8Encoding(false));
 
-                if (File.Exists(ResultFilePath))
+                if (File.Exists(resultFilePath))
                 {
-                    File.Delete(ResultFilePath);
+                    File.Delete(resultFilePath);
                 }
 
-                File.Move(temporaryFile, ResultFilePath);
+                File.Move(temporaryFile, resultFilePath);
             }
             catch(Exception ex)
             {
                 Console.WriteLine(ex.Message);
+            }
+        }
+
+        private static void DeleteResultFile(string resultFilePath)
+        {
+            if (File.Exists(resultFilePath))
+            {
+                File.Delete(resultFilePath);
             }
         }
 
