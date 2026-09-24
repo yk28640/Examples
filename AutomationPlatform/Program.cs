@@ -11,6 +11,7 @@ namespace AutomationPlatform
 
             // Add MudBlazor services
             builder.Services.AddMudServices();
+            builder.Services.AddSingleton<EventLogService>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()

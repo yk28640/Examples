@@ -124,7 +124,7 @@
     </MudPaper>
 }
 
-    @code {
+@code {
     /// <summary>
     /// SIMATIC Automation Tool .NET API 的精简调用外观（Facade）。
     /// 典型用法：
@@ -178,6 +178,21 @@
                     DisplayName = $"{index}. {FormatDevice(device)}"
                 })
                 .ToList();
+
+            foreach (IProfinetDevice dev in scanResult.Devices)
+            {
+                ICPU cpu = dev as ICPU;
+                if (cpu != null)
+                {
+                    Result retVal = dev.RefreshStatus();
+                    if (retVal.Succeeded)
+                    {
+                        Console.WriteLine(cpu.OperatingMode.ToString());
+                    }
+
+                }
+            }
+
 
             if (scanResult.Errors.Failed)
             {

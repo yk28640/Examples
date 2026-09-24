@@ -1,0 +1,95 @@
+@page "/operationlog"
+@rendermode InteractiveServer
+@inject EventLogService EventLogService
+
+<PageTitle>OperationLog</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">OperationLog</MudText>
+
+@if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+	<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+}
+
+<MudPaper Class="pa-4">
+	<MudTable Items="_filteredEntries" Loading="_isLoading" Dense="true" Hover="true" Striped="true" Bordered="true" FixedHeader="true" Height="600px" Elevation="0">
+		<ToolBarContent>
+			<MudText Typo="Typo.h6">Siemens Automation TIAPortal Operational</MudText>
+			<MudSpacer />
+			<MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadEntriesAsync" Disabled="_isLoading">
+				刷新
+			</MudButton>
+		</ToolBarContent>
+		<HeaderContent>
+			<MudTh>记录时间</MudTh>
+			<MudTh>用户</MudTh>
+			<MudTh>计算机</MudTh>
+			<MudTh>事件 ID</MudTh>
+			<MudTh>级别</MudTh>
+			<MudTh>提供程序</MudTh>
+			<MudTh>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span>事件内容</span>
+					<MudTextField @bind-Value="_eventContentFilter" Immediate="true" Placeholder="筛选" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Clearable="true" Style="min-width: 220px;" />
+				</div>
+			</MudTh>
+		</HeaderContent>
+		<RowTemplate>
+			<MudTd DataLabel="记录时间">@(context.TimeCreated?.ToString("yyyy-MM-dd HH:mm:ss.fff"))</MudTd>
+			<MudTd DataLabel="用户">@context.User</MudTd>
+			<MudTd DataLabel="计算机">@context.Computer</MudTd>
+			<MudTd DataLabel="事件 ID">@context.EventId</MudTd>
+			<MudTd DataLabel="级别">@context.Level</MudTd>
+			<MudTd DataLabel="提供程序">@context.Provider</MudTd>
+			<MudTd DataLabel="事件内容">
+				<div style="white-space: pre-wrap; min-width: 320px;">@context.EventContent</div>
+			</MudTd>
+		</RowTemplate>
+		<NoRecordsContent>
+			<MudText Class="pa-4">没有找到事件记录。</MudText>
+		</NoRecordsContent>
+		<LoadingContent>
+			<MudText Class="pa-4">正在读取事件日志...</MudText>
+		</LoadingContent>
+		<PagerContent>
+			<MudTablePager PageSizeOptions="new int[] { 25, 50, 100 }" />
+		</PagerContent>
+	</MudTable>
+</MudPaper>
+
+@code {
+	private IReadOnlyList<OperationLogEntry> _entries = [];
+	private string? _eventContentFilter;
+	private string? _errorMessage;
+	private bool _isLoading;
+
+	private IEnumerable<OperationLogEntry> _filteredEntries =>
+		string.IsNullOrWhiteSpace(_eventContentFilter)
+			? _entries
+			: _entries.Where(entry => entry.EventContent?.Contains(_eventContentFilter, StringComparison.OrdinalIgnoreCase) == true);
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadEntriesAsync();
+	}
+
+	private async Task LoadEntriesAsync()
+	{
+		_isLoading = true;
+		_errorMessage = null;
+
+		try
+		{
+			_entries = await Task.Run(EventLogService.ReadOperationLogs);
+		}
+		catch (Exception exception)
+		{
+			_entries = [];
+			_errorMessage = $"读取事件日志失败：{exception.Message}";
+		}
+		finally
+		{
+			_isLoading = false;
+		}
+	}
+}

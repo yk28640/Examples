@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutomationPlatform", "Autom
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpennessServices", "OpennessServices\OpennessServices.csproj", "{61299A01-E4E8-42D5-B608-3AD2BB5904A9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testConsoleNET10", "..\testConsoleNET10\testConsoleNET10.csproj", "{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,14 @@ Global
 		{61299A01-E4E8-42D5-B608-3AD2BB5904A9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{61299A01-E4E8-42D5-B608-3AD2BB5904A9}.Release|x64.ActiveCfg = Release|Any CPU
 		{61299A01-E4E8-42D5-B608-3AD2BB5904A9}.Release|x64.Build.0 = Release|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Debug|x64.Build.0 = Debug|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|x64.ActiveCfg = Release|Any CPU
+		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
