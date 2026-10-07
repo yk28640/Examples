@@ -55,15 +55,17 @@ namespace OpennessServices
             //RunUpload(argsSet);
 
             Console.WriteLine("用法:");
-            Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称>");
-            Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称>");
+            Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称> [结果文件路径]");
+            Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称> [结果文件路径]");
         }
         private static void RunUpload(string[] args)
         {
+            var resultFilePath = args.Length > 3 ? args[3] : UploadResultFilePath;
             try
             {
                 if (args.Length < 3)
                 {
+                    WriteResultFile(resultFilePath, "Failed", false, "参数不足，需要目标目录和工程名称。");
                     Console.Error.WriteLine("参数不足，需要目标目录和工程名称。");
                     Environment.ExitCode = 2;
                     return;
@@ -71,19 +73,18 @@ namespace OpennessServices
 
                 var directoryPath = args[1];
                 var projectName = args[2];
-                DeleteResultFile(UploadResultFilePath);
-                using (var tia = new TiaOpennessClient(withUserInterface: true))
+                DeleteResultFile(resultFilePath);
+                using (var tia = new TiaOpennessClient(withUserInterface: false))
                 {
                     tia.UploadStation(directoryPath, projectName);
-                    WriteResultFile(UploadResultFilePath, "Uploaded", true,
-                        $"项目上传成功。保存目录: {directoryPath}{projectName}");
                 }
 
-                Environment.ExitCode = 0;
+                WriteResultFile(resultFilePath, "Uploaded", true,
+                    $"项目上传成功。保存目录: {Path.Combine(directoryPath, projectName)}");
             }
             catch (Exception ex)
             {
-                WriteResultFile(UploadResultFilePath, "Failed", false,
+                WriteResultFile(resultFilePath, "Failed", false,
                     ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
                 Console.Error.WriteLine($"上传项目失败: {ex.GetType().Name}: {ex.Message}");
                 Environment.ExitCode = 1;
@@ -92,6 +93,7 @@ namespace OpennessServices
 
         private static void RunCompare(string[] args)
         {
+            var resultFilePath = args.Length > 3 ? args[3] : ResultFilePath;
 
 #if DEBUG
             //if (!Debugger.IsAttached)
@@ -106,7 +108,7 @@ namespace OpennessServices
 
             if (args.Length < 3)
             {
-                WriteResultFile(ResultFilePath, "Failed", false, "参数不足，需要工程路径和设备名称。");
+                WriteResultFile(resultFilePath, "Failed", false, "参数不足，需要工程路径和设备名称。");
                 Environment.ExitCode = 2;
                 return;
             }
@@ -116,6 +118,8 @@ namespace OpennessServices
 
             try
             {
+                DeleteResultFile(resultFilePath);
+                TiaOpennessClient.OnlineCompareSummary compareResult;
                 using (var tia = new TiaOpennessClient(withUserInterface: false))
                 {
                     //tia.Logger = message => Console.Error.WriteLine(message);
@@ -125,20 +129,16 @@ namespace OpennessServices
                     //var plc = tia.GetPlcSoftware(deviceName);
                     //var device = tia.GetDevice(deviceName);
 
-                    var compareResult = tia.ComparePlcProgramOnline(projectPath, deviceName);
-                    
-                    // 输出 JSON 到标准输出，并写入结果文件
-                    // 假定 compareResult 包含 Success, State, Details 字段；根据实际 API 调整字段名
-                    WriteResultFile(ResultFilePath, GetString(compareResult, "State"), GetBool(compareResult, "Success"), GetString(compareResult, "Details"));
-                    
-                    Environment.ExitCode = GetBool(compareResult, "Success") ? 0 : 1;
-                    Environment.Exit(Environment.ExitCode);
-            }
+                    compareResult = tia.ComparePlcProgramOnline(projectPath, deviceName);
+                }
+
+                Environment.ExitCode = compareResult.Success ? 0 : 1;
+                WriteResultFile(resultFilePath, compareResult.State, compareResult.Success, compareResult.Details);
             }
             catch (Exception ex)
             {
-                WriteResultFile(ResultFilePath, "Failed", false, ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
-               
+                WriteResultFile(resultFilePath, "Failed", false, ex.GetType().Name + ": " + ex.Message + Environment.NewLine + ex.StackTrace);
+                Console.Error.WriteLine($"在线比较失败: {ex.GetType().Name}: {ex.Message}");
                 Environment.ExitCode = 1;
             }
         }
@@ -218,7 +218,8 @@ namespace OpennessServices
             }
             catch(Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.Error.WriteLine("写入结果文件失败: " + ex.Message);
+                Environment.ExitCode = 1;
             }
         }
 
