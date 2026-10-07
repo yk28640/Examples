@@ -51,6 +51,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <None Include="obj\APSettingValidation\checks\ProjectDirectoryChecks.csproj" />
     <None Include="SatSdkFacade.cs" />
   </ItemGroup>
 </Project>

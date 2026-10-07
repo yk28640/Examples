@@ -17,26 +17,15 @@ public sealed record OperationLogEntry(
 
 public sealed class EventLogService
 {
-    private const string LogFileName = "SiemensAG-Automation-TIAPortal%4Operational.evtx";
+
     private const int MaximumEntries = 5000;
 
     public IReadOnlyList<OperationLogEntry> ReadOperationLogs()
     {
-        var systemRoot = Environment.GetEnvironmentVariable("SystemRoot")
-            ?? Environment.GetEnvironmentVariable("windir");
+       
 
-        if (string.IsNullOrWhiteSpace(systemRoot))
-        {
-            throw new InvalidOperationException("无法确定 Windows 系统目录。");
-        }
-
-        var logPath = Path.Combine(systemRoot, "System32", "Winevt", "Logs", LogFileName);
-        if (!File.Exists(logPath))
-        {
-            throw new FileNotFoundException("找不到 Siemens Automation TIAPortal Operational 日志文件。", logPath);
-        }
-
-        var query = new EventLogQuery(logPath, PathType.FilePath)
+        var query = new EventLogQuery("SiemensAG-Automation-TIAPortal/Operational",
+       PathType.LogName)
         {
             ReverseDirection = true
         };

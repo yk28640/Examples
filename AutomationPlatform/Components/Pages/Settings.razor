@@ -1,57 +1,272 @@
 @page "/settings"
+@page "/setting"
 @rendermode InteractiveServer
-@inject AutomationSettings AutomationConfig
+@inject ProjectDirectoryService Directories
 @inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+@inject ILogger<Settings> Logger
 
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<PageTitle>设置</PageTitle>
+<PageTitle>项目设置</PageTitle>
 
-<MudText Typo="Typo.h3" GutterBottom="true">设置</MudText>
+<MudText Typo="Typo.h4" GutterBottom="true">项目设置</MudText>
+<MudText Class="mb-4">服务端根目录：@Directories.RootPath</MudText>
+<MudAlert Severity="Severity.Info" Class="mb-4">
+    点击 AP 新增 Line 线体，点击线体新增 ST 工站。前缀固定，只需输入后缀。
+    仅显示符合命名和层级规则的实际目录，不显示普通文件、其他目录及符号链接。
+    重命名保留目录内容；删除仅限空目录，AP 根目录不可重命名或删除。
+</MudAlert>
 
-<MudPaper Class="pa-4" MaxWidth="MaxWidth.Medium">
-    <MudTextField @bind-Value="projectPath"
-                  Label="项目工作目录"
-                  Variant="Variant.Outlined"
-                  HelperText="请输入用于在线比较的 TIA 项目文件路径"
-                  FullWidth="true" />
+<MudButton OnClick="RefreshAsync" Disabled="@busy" StartIcon="@Icons.Material.Filled.Refresh"
+           Variant="Variant.Outlined" Class="mb-4">刷新目录</MudButton>
+@if (busy)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+}
 
-    <MudNumericField @bind-Value="compareTimeoutMinutes"
-                     Label="比较时间（分钟）"
-                     Variant="Variant.Outlined"
-                     Min="1"
-                     Max="1440"
-                     Immediate="true"
-                     Class="mt-4" />
-
-    <MudButton Color="Color.Primary"
-               Variant="Variant.Filled"
-               Disabled="@(!CanSave)"
-               OnClick="Save">
-        保存设置
-    </MudButton>
-</MudPaper>
+<MudGrid>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4">
+            @if (root is not null)
+            {
+                <MudTreeView T="string" SelectedValue="@selectedPath" SelectedValueChanged="SelectNode"
+                             SelectionMode="SelectionMode.SingleSelection" Disabled="@busy">
+                    <MudTreeViewItem T="string" Value="@root.RelativePath" Text="AP"
+                                     Icon="@Icons.Material.Filled.Folder" @bind-Expanded="rootExpanded">
+                        @foreach (var line in root.Children)
+                        {
+                            <MudTreeViewItem T="string" @key="line.RelativePath" Value="@line.RelativePath" Text="@line.Name"
+                                             Icon="@Icons.Material.Filled.Folder"
+                                             Expanded="@expandedLines.Contains(line.RelativePath)"
+                                             ExpandedChanged="@(expanded => SetExpanded(line.RelativePath, expanded))">
+                                @foreach (var station in line.Children)
+                                {
+                                    <MudTreeViewItem T="string" @key="station.RelativePath" Value="@station.RelativePath"
+                                                     Text="@station.Name" Icon="@Icons.Material.Filled.Folder" />
+                                }
+                            </MudTreeViewItem>
+                        }
+                    </MudTreeViewItem>
+                </MudTreeView>
+            }
+            else
+            {
+                <MudText>目录尚未加载，请检查磁盘和应用运行账户的权限后重试。</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="7">
+        @if (selectedNode is not null)
+        {
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6">@selectedNode.Name</MudText>
+                <MudText Class="mb-4" Style="overflow-wrap:anywhere">@SelectedFullPath</MudText>
+                @if (selectedNode.Level < 2)
+                {
+                    <MudTextField T="string" @bind-Value="newSuffix" Label="@(selectedNode.Level == 0 ? "线体名称后缀" : "工站名称后缀")"
+                                  Adornment="Adornment.Start" AdornmentText="@CreatePrefix"
+                                  Variant="Variant.Outlined" Immediate="true" Disabled="@busy" />
+                    <MudButton OnClick="CreateAsync" Color="Color.Primary" Variant="Variant.Filled" Class="mt-3"
+                               Disabled="@(busy || string.IsNullOrWhiteSpace(newSuffix))">
+                        @(selectedNode.Level == 0 ? "新增线体" : "新增工站")
+                    </MudButton>
+                }
+                @if (selectedNode.Level > 0)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudTextField T="string" @bind-Value="renameSuffix" Label="重命名后缀"
+                                  Adornment="Adornment.Start" AdornmentText="@RenamePrefix"
+                                  Variant="Variant.Outlined" Immediate="true" Disabled="@busy" />
+                    <MudButton OnClick="RenameAsync" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-3"
+                               Disabled="@(busy || string.IsNullOrWhiteSpace(renameSuffix))">重命名</MudButton>
+                    <MudButton OnClick="DeleteAsync" Variant="Variant.Outlined" Color="Color.Error" Class="mt-3 ml-3"
+                               Disabled="@busy" StartIcon="@Icons.Material.Filled.Delete">删除空目录</MudButton>
+                }
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
 
 @code {
-    private string projectPath = string.Empty;
-    private int compareTimeoutMinutes;
+    private ProjectDirectoryNode? root;
+    private ProjectDirectoryNode? selectedNode;
+    private string? selectedPath;
+    private string newSuffix = string.Empty;
+    private string renameSuffix = string.Empty;
+    private string? errorMessage;
+    private bool busy;
+    private bool rootExpanded = true;
+    private readonly HashSet<string> expandedLines = new(StringComparer.OrdinalIgnoreCase);
 
-    private bool CanSave =>
-        !string.IsNullOrWhiteSpace(projectPath) &&
-        compareTimeoutMinutes is >= 1 and <= 1440;
+    private string CreatePrefix => selectedNode?.Level == 0 ? "Line" : "ST";
+    private string RenamePrefix => selectedNode?.Level == 1 ? "Line" : "ST";
+    private string SelectedFullPath => Path.Combine(Directories.RootPath, selectedPath ?? string.Empty);
 
-    protected override void OnInitialized()
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    private void SetExpanded(string path, bool expanded)
     {
-        projectPath = AutomationConfig.ProjectPath;
-        compareTimeoutMinutes = AutomationConfig.CompareTimeoutMinutes;
+        if (expanded)
+            expandedLines.Add(path);
+        else
+            expandedLines.Remove(path);
     }
 
-    private void Save()
+    private void SelectNode(string? path)
     {
-        AutomationConfig.ProjectPath = projectPath.Trim();
-        AutomationConfig.CompareTimeoutMinutes = compareTimeoutMinutes;
-        Snackbar.Add("设置已保存。", Severity.Success);
+        selectedNode = FindNode(path) ?? root;
+        selectedPath = selectedNode?.RelativePath;
+        newSuffix = string.Empty;
+        renameSuffix = selectedNode is { Level: > 0 } ? selectedNode.Name[RenamePrefix.Length..] : string.Empty;
+    }
+
+    private ProjectDirectoryNode? FindNode(string? path)
+    {
+        if (root is null || path is null)
+            return null;
+
+        return new[] { root }.Concat(root.Children).Concat(root.Children.SelectMany(line => line.Children))
+            .FirstOrDefault(node => string.Equals(node.RelativePath, path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task LoadAsync(string? path)
+    {
+        root = await Task.Run(Directories.Load);
+        expandedLines.IntersectWith(root.Children.Select(line => line.RelativePath));
+        SelectNode(path);
+        if (selectedNode is { Level: > 0 })
+        {
+            rootExpanded = true;
+            expandedLines.Add(selectedNode.Level == 1 ? selectedNode.RelativePath : Path.GetDirectoryName(selectedNode.RelativePath)!);
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (busy)
+            return;
+
+        busy = true;
+        errorMessage = null;
+        try
+        {
+            await LoadAsync(selectedPath);
+        }
+        catch (Exception exception)
+        {
+            root = null;
+            SelectNode(null);
+            ReportError(exception, "加载目录失败");
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private Task CreateAsync()
+    {
+        var parent = selectedPath;
+        var suffix = newSuffix;
+        return parent is null ? Task.CompletedTask : ExecuteAsync(() => Directories.Create(parent, suffix), "目录已创建。");
+    }
+
+    private Task RenameAsync()
+    {
+        var path = selectedPath;
+        var suffix = renameSuffix;
+        return path is null ? Task.CompletedTask : ExecuteAsync(() => Directories.Rename(path, suffix), "目录已重命名。");
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (busy || selectedNode is not { Level: > 0 })
+            return;
+
+        var node = selectedNode;
+        busy = true;
+        bool? confirmed;
+        try
+        {
+            confirmed = await Dialogs.ShowMessageBoxAsync("确认删除空目录",
+                $"确定删除 {node.Name} 吗？路径：{Path.Combine(Directories.RootPath, node.RelativePath)}。仅允许删除空目录；包含工站、文件或其他目录时将拒绝删除。",
+                yesText: "删除", cancelText: "取消");
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception, "无法打开删除确认窗口");
+            return;
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        if (confirmed == true)
+        {
+            await ExecuteAsync(() =>
+            {
+                Directories.Delete(node.RelativePath);
+                return Path.GetDirectoryName(node.RelativePath) ?? string.Empty;
+            }, "空目录已删除。");
+        }
+    }
+
+    private async Task ExecuteAsync(Func<string> operation, string successMessage)
+    {
+        if (busy)
+            return;
+
+        busy = true;
+        errorMessage = null;
+        var saved = false;
+        try
+        {
+            var path = await Task.Run(operation);
+            saved = true;
+            await LoadAsync(path);
+            Snackbar.Add(successMessage, Severity.Success);
+        }
+        catch (Exception exception)
+        {
+            if (saved)
+            {
+                root = null;
+                SelectNode(null);
+            }
+            ReportError(exception, saved ? "目录操作已完成，但刷新失败，请重新加载" : "目录操作失败");
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void ReportError(Exception exception, string context)
+    {
+        Logger.LogError(exception, "{Context}，项目根目录：{RootPath}", context, Directories.RootPath);
+        var detail = exception switch
+        {
+            UnauthorizedAccessException => "权限不足，请为应用运行账户授予目标目录的读取及修改权限。",
+            System.Security.SecurityException => "访问被安全策略拒绝，请检查应用运行账户的权限。",
+            DirectoryNotFoundException => "磁盘或目录不存在，请检查 E 盘及目标目录后刷新。",
+            FileNotFoundException => "目标已不存在，请刷新目录后重试。",
+            PathTooLongException => "目录路径过长，请缩短节点名称。",
+            ArgumentException or InvalidOperationException => exception.Message,
+            IOException => "文件系统操作失败，目录可能被占用、非空或已被其他程序修改，请检查后刷新。",
+            _ => "发生未知错误，请查看应用日志后重试。"
+        };
+        errorMessage = $"{context}：{detail}";
+        if (RendererInfo.IsInteractive)
+        {
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
     }
 }
