@@ -30,6 +30,8 @@ namespace AutomationPlatform
             builder.Services.AddSingleton<DiscoveryHistoryService>();
             builder.Services.AddSingleton<DiscoveryScanService>();
             builder.Services.AddSingleton<OpennessOperationService>();
+            builder.Services.AddSingleton<StationBatchUploadService>();
+            builder.Services.AddHostedService(provider => provider.GetRequiredService<StationBatchUploadService>());
             builder.Services.AddCors(options => options.AddPolicy("ReadOnlyApi", policy =>
                 policy.AllowAnyOrigin().WithMethods("GET").AllowAnyHeader()));
 

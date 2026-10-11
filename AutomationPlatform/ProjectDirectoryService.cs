@@ -114,6 +114,16 @@ public sealed class ProjectDirectoryService
         }
     }
 
+    public string GetStationPath(string relativePath)
+    {
+        lock (syncRoot)
+        {
+            var (path, level) = Resolve(relativePath);
+            EnsureStation(level);
+            return path;
+        }
+    }
+
     public string Rename(string relativePath, string suffix)
     {
         lock (syncRoot)
@@ -264,7 +274,7 @@ public sealed class ProjectDirectoryService
             var normalizedIp = NormalizeStationIp(config.IpAddress);
             return (normalizedIp, null);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException or JsonException or InvalidDataException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException or JsonException or InvalidDataException or ArgumentException or InvalidOperationException)
         {
             return (null, $"工站 IP 配置文件无效：{exception.Message}");
         }

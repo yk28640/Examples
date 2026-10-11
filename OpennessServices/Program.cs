@@ -56,7 +56,7 @@ namespace OpennessServices
 
             Console.WriteLine("用法:");
             Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称> [结果文件路径]");
-            Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称> [结果文件路径]");
+            Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称> [结果文件路径] [工站IP]");
         }
         private static void RunUpload(string[] args)
         {
@@ -76,7 +76,10 @@ namespace OpennessServices
                 DeleteResultFile(resultFilePath);
                 using (var tia = new TiaOpennessClient(withUserInterface: false))
                 {
-                    tia.UploadStation(directoryPath, projectName);
+                    if (args.Length > 4)
+                        tia.UploadStation(directoryPath, projectName, args[4]);
+                    else
+                        tia.UploadStation(directoryPath, projectName);
                 }
 
                 WriteResultFile(resultFilePath, "Uploaded", true,

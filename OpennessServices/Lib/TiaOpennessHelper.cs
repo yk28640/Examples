@@ -18,6 +18,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 
 
 namespace OpennessServices
@@ -759,6 +761,15 @@ namespace OpennessServices
 
         public void UploadStation(string directoryPath, string stationName)
         {
+            UploadStation(directoryPath, stationName, "192.168.98.137");
+        }
+
+        public void UploadStation(string directoryPath, string stationName, string stationIpAddress)
+        {
+            IPAddress address;
+            if (!IPAddress.TryParse(stationIpAddress, out address) || address.AddressFamily != AddressFamily.InterNetwork)
+                throw new ArgumentException("请输入有效的工站 IPv4 地址。", nameof(stationIpAddress));
+
             var project = CreateProject(directoryPath, stationName);
             StationUploadProvider uploadProvider = project.GetService<StationUploadProvider>();
             if (uploadProvider != null)
@@ -770,7 +781,7 @@ namespace OpennessServices
                 //ConfigurationPcInterface pcInterface = configurationMode.PcInterfaces.Find("Intel(R)
                 //Ethernet Connection I217 - LM", 1);
                 //"Create an address. This "ConfigurationAddress" is used as parameter for upload."
-                ConfigurationAddress uploadAddress = pcInterface.Addresses.Create("192.168.98.137");
+                ConfigurationAddress uploadAddress = pcInterface.Addresses.Create(address.ToString());
                 m_OnlineConfigurationDelegate = OnlineCallBackMethod;
                 configuration.OnlineLegitimation += m_OnlineConfigurationDelegate;
 
@@ -785,8 +796,12 @@ namespace OpennessServices
                     throw new Exception("上传操作失败。");
                 }
 
+                SaveProject();
 
-
+            }
+            else
+            {
+                throw new InvalidOperationException("TIA 项目未提供站点上传服务。");
             }
 
         }
@@ -816,22 +831,7 @@ namespace OpennessServices
                 return;
             }
 
-            bool isSecureCommunication = moduleReadAccessPassword.IsSecureCommunication;
-            if (isSecureCommunication == false)
-            {
-                // Secure communication with (Tls handshake)
-                //TlsVerificationConfiguration verificationConfiguration = UploadConfiguration as TlsVerificationConfiguration;
-
-                //if (verificationConfiguration != null)
-                //{
-                //    verificationConfiguration.CurrentSelection = TlsVerificationConfigurationSelection.Trusted;
-
-
-                //}
-            }
-
-
-            throw new NotSupportedException(); // Exception thrown in the delagate will cancel upload
+            throw new NotSupportedException($"不支持的上传认证配置：{UploadConfiguration?.GetType().Name ?? "未知"}。");
         }
 
         #endregion

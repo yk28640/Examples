@@ -2,9 +2,11 @@
 @page "/setting"
 @rendermode InteractiveServer
 @inject ProjectDirectoryService Directories
+@inject StationBatchUploadService BatchUploads
 @inject ISnackbar Snackbar
 @inject IDialogService Dialogs
 @inject ILogger<Settings> Logger
+@implements IDisposable
 
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -30,6 +32,45 @@
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
 }
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">工站工程批量上传</MudText>
+    <MudText Class="mb-3">按服务器本地时间每天上传一次，也可以立即执行。逐个读取 AP 下各 ST 的 IP，并将上传的工程保存到对应 ST 文件夹；未配置或无效 IP 的工站会跳过。</MudText>
+    <label for="daily-upload-time">每日上传时间</label>
+    <input id="daily-upload-time" type="time" value="@dailyTime"
+           @onchange="@(e => dailyTime = e.Value?.ToString() ?? string.Empty)"
+           disabled="@scheduleSaving" class="ml-2 mr-2" />
+    <MudButton OnClick="SaveDailyTimeAsync" Variant="Variant.Outlined" Color="Color.Primary"
+               Disabled="@scheduleSaving">保存时间</MudButton>
+    <MudButton OnClick="DisableDailyTimeAsync" Variant="Variant.Outlined" Color="Color.Error" Class="ml-2"
+               Disabled="@(scheduleSaving || string.IsNullOrEmpty(BatchUploads.DailyTime))">关闭定时</MudButton>
+    <MudButton OnClick="StartBatchUpload" Variant="Variant.Filled" Color="Color.Secondary" Class="ml-3"
+               Disabled="@(busy || scheduleSaving || BatchUploads.Status.IsRunning)">立即上传全部工站</MudButton>
+    <MudText Typo="Typo.body2" Class="mt-3">当前定时：@(BatchUploads.DailyTime is { } time ? $"每天 {time}（服务器本地时间）" : "未启用")</MudText>
+    @if (BatchUploads.ScheduleError is { } scheduleError)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-2">@scheduleError</MudAlert>
+    }
+    @if (BatchUploads.Status.IsRunning)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-3" />
+    }
+    @if (BatchUploads.Status.Trigger is not null)
+    {
+        <MudText Class="mt-3">@BatchUploads.Status.Trigger 触发：@(BatchUploads.Status.IsRunning ? "正在上传" : "已结束")；已处理 @BatchUploads.Status.Results.Count 个工站。</MudText>
+        @if (BatchUploads.Status.Error is { } batchError)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-2">@batchError</MudAlert>
+        }
+        @foreach (var result in BatchUploads.Status.Results)
+        {
+            <MudAlert Severity="@(result.State == "成功" ? Severity.Success : Severity.Warning)" Class="mt-2">
+                <strong>@result.Station</strong> (@(result.IpAddress ?? "无 IP"))：@result.State
+                <div style="white-space: pre-wrap; overflow-wrap: anywhere">@result.Message</div>
+            </MudAlert>
+        }
+    }
+</MudPaper>
 
 <MudGrid>
     <MudItem xs="12" md="5">
@@ -124,6 +165,9 @@
     private string renameSuffix = string.Empty;
     private string? errorMessage;
     private bool busy;
+    private bool scheduleSaving;
+    private bool disposed;
+    private string dailyTime = string.Empty;
     private bool rootExpanded = true;
     private readonly HashSet<string> expandedLines = new(StringComparer.OrdinalIgnoreCase);
 
@@ -135,7 +179,75 @@
             ? station.Name
             : $"{station.Name}  —  {station.StationIpAddress}";
 
-    protected override Task OnInitializedAsync() => RefreshAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        dailyTime = BatchUploads.DailyTime ?? string.Empty;
+        BatchUploads.Changed += OnBatchChanged;
+        await RefreshAsync();
+    }
+
+    private void OnBatchChanged()
+    {
+        if (!disposed)
+            _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveDailyTimeAsync()
+    {
+        if (scheduleSaving)
+            return;
+
+        scheduleSaving = true;
+        try
+        {
+            var time = dailyTime;
+            await Task.Run(() => BatchUploads.SaveDailyTime(time));
+            dailyTime = BatchUploads.DailyTime ?? string.Empty;
+            Snackbar.Add("每日上传时间已保存。", Severity.Success);
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception, "保存每日上传时间失败");
+        }
+        finally
+        {
+            scheduleSaving = false;
+        }
+    }
+
+    private async Task DisableDailyTimeAsync()
+    {
+        if (scheduleSaving)
+            return;
+
+        scheduleSaving = true;
+        try
+        {
+            await Task.Run(() => BatchUploads.DisableDailyTime());
+            dailyTime = string.Empty;
+            Snackbar.Add("已关闭每日定时上传。", Severity.Info);
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception, "关闭每日定时上传失败");
+        }
+        finally
+        {
+            scheduleSaving = false;
+        }
+    }
+
+    private void StartBatchUpload()
+    {
+        if (!BatchUploads.TryStartManual())
+            Snackbar.Add("已有上传任务正在执行，或应用正在停止。", Severity.Warning);
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        BatchUploads.Changed -= OnBatchChanged;
+    }
 
     private void SetExpanded(string path, bool expanded)
     {

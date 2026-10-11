@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Options;
 
@@ -40,8 +42,21 @@ public sealed class OpennessOperationService(
             TimeSpan.FromSeconds(settings.UploadTimeoutSeconds), cancellationToken);
     }
 
+    public Task<OpennessOperationResult> UploadAsync(string stationIpAddress, string stationDirectory,
+        CancellationToken cancellationToken)
+    {
+        if (!IPAddress.TryParse(stationIpAddress, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+            throw new ArgumentException("请输入有效的工站 IPv4 地址。", nameof(stationIpAddress));
+        if (!Path.IsPathFullyQualified(stationDirectory) || !Directory.Exists(stationDirectory))
+            throw new DirectoryNotFoundException("工站目录不存在或不是绝对路径。");
+
+        var projectName = $"UploadedStation_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+        return RunAsync("upload", [stationDirectory, projectName],
+            TimeSpan.FromSeconds(options.Value.UploadTimeoutSeconds), cancellationToken, address.ToString());
+    }
+
     private async Task<OpennessOperationResult> RunAsync(string command, string[] arguments,
-        TimeSpan timeout, CancellationToken cancellationToken)
+        TimeSpan timeout, CancellationToken cancellationToken, string? stationIpAddress = null)
     {
         if (timeout <= TimeSpan.Zero)
             throw new InvalidOperationException("操作超时必须大于零。");
@@ -70,6 +85,8 @@ public sealed class OpennessOperationService(
             foreach (var argument in arguments)
                 startInfo.ArgumentList.Add(argument);
             startInfo.ArgumentList.Add(resultPath);
+            if (stationIpAddress != null)
+                startInfo.ArgumentList.Add(stationIpAddress);
 
             cancellationToken.ThrowIfCancellationRequested();
             using var process = Process.Start(startInfo)
