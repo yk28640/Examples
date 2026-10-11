@@ -72,10 +72,14 @@
         <MudList T="DiscoveredDevice" Dense="true">
             @foreach (var device in scannedDevices)
             {
-                <MudListItem>
+                <MudListItem Style="@(device.IsProtected == true ? "background-color: var(--mud-palette-warning-hover);" : null)">
                     <div>
                         <MudText>@device.IpAddress · @device.ProfinetName · @device.Description</MudText>
                         <MudText Typo="Typo.body2">MAC：@device.MacAddress · 订货号：@device.ArticleNumber</MudText>
+                        @if (device.IsProtected == true)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Warning">CPU 已受保护，请确认访问权限。</MudText>
+                        }
                         @if (device.OperatingMode != null)
                         {
                             <MudText Typo="Typo.body2">运行状态：@device.OperatingMode</MudText>

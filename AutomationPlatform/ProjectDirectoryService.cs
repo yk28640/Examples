@@ -1,13 +1,26 @@
+using System.Net;
+using System.Net.Sockets;
+using System.Text.Json;
+
 namespace AutomationPlatform;
 
 public sealed record ProjectDirectoryNode(
     string Name,
     string RelativePath,
     int Level,
-    IReadOnlyList<ProjectDirectoryNode> Children);
+    IReadOnlyList<ProjectDirectoryNode> Children,
+    string? StationIpAddress,
+    string? StationIpError);
 
 public sealed class ProjectDirectoryService
 {
+    private const string StationConfigFileName = "station.json";
+    private static readonly JsonSerializerOptions stationConfigJsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly object syncRoot = new();
 
     public ProjectDirectoryService() : this(@"E:\AP")
@@ -38,7 +51,7 @@ public sealed class ProjectDirectoryService
         }
     }
 
-    public string Create(string parentRelativePath, string suffix)
+    public string Create(string parentRelativePath, string suffix, string? stationIpAddress = null)
     {
         lock (syncRoot)
         {
@@ -48,11 +61,55 @@ public sealed class ProjectDirectoryService
                 throw new InvalidOperationException("工站节点不能再创建子节点。");
             }
 
+            if (level == 0 && stationIpAddress is not null)
+            {
+                throw new InvalidOperationException("Line 线体不配置 IP，只有 ST 工站需要配置 IP。");
+            }
+
+            if (level == 1)
+            {
+                stationIpAddress = NormalizeStationIp(stationIpAddress ?? string.Empty);
+            }
+
             var name = BuildName(level == 0 ? "Line" : "ST", suffix);
             EnsureNameAvailable(parentPath, name);
             var path = Path.Combine(parentPath, name);
             Directory.CreateDirectory(path);
-            CheckDirectoryChain(path);
+            try
+            {
+                CheckDirectoryChain(path);
+                if (level == 1)
+                {
+                    WriteStationIp(path, stationIpAddress);
+                }
+            }
+            catch
+            {
+                try
+                {
+                    if (Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any())
+                    {
+                        Directory.Delete(path, recursive: false);
+                    }
+                }
+                catch
+                {
+                }
+
+                throw;
+            }
+
+            return Path.GetRelativePath(RootPath, path);
+        }
+    }
+
+    public string SetStationIp(string relativePath, string stationIpAddress)
+    {
+        lock (syncRoot)
+        {
+            var (path, level) = Resolve(relativePath);
+            EnsureStation(level);
+            WriteStationIp(path, stationIpAddress);
             return Path.GetRelativePath(RootPath, path);
         }
     }
@@ -83,12 +140,23 @@ public sealed class ProjectDirectoryService
         {
             var (path, level) = Resolve(relativePath);
             EnsureNotRoot(level);
-            if (Directory.EnumerateFileSystemEntries(path).Any())
+
+            var entries = Directory.EnumerateFileSystemEntries(path).ToList();
+            if (entries.Count == 0)
             {
-                throw new InvalidOperationException("只能删除空目录。请先处理工站、子目录及文件后再删除。");
+                Directory.Delete(path, recursive: false);
+                return;
             }
 
-            Directory.Delete(path, recursive: false);
+            if (level == 2 && entries.Count == 1 && IsStationConfigEntry(entries[0]))
+            {
+                EnsureStationConfigFile(entries[0]);
+                File.Delete(entries[0]);
+                Directory.Delete(path, recursive: false);
+                return;
+            }
+
+            throw new InvalidOperationException("只能删除空目录。工站目录仅包含 IP 配置文件时也允许删除。请先处理工站、子目录及文件后再删除。");
         }
     }
 
@@ -134,6 +202,9 @@ public sealed class ProjectDirectoryService
         }
     }
 
+    private static bool IsStationConfigEntry(string entryPath) =>
+        string.Equals(Path.GetFileName(entryPath), StationConfigFileName, StringComparison.OrdinalIgnoreCase);
+
     private static void EnsureNameAvailable(string parent, string name)
     {
         if (Directory.EnumerateFileSystemEntries(parent).Any(path =>
@@ -146,6 +217,14 @@ public sealed class ProjectDirectoryService
     private ProjectDirectoryNode ReadNode(string path, string relativePath, int level)
     {
         var children = new List<ProjectDirectoryNode>();
+        string? stationIpAddress = null;
+        string? stationIpError = null;
+
+        if (level == 2)
+        {
+            (stationIpAddress, stationIpError) = ReadStationIp(path);
+        }
+
         if (level < 2)
         {
             var prefix = level == 0 ? "Line" : "ST";
@@ -165,7 +244,106 @@ public sealed class ProjectDirectoryService
         }
 
         return new ProjectDirectoryNode(level == 0 ? "AP" : Path.GetFileName(path),
-            relativePath, level, children);
+            relativePath, level, children, stationIpAddress, stationIpError);
+    }
+
+    private static (string? StationIpAddress, string? StationIpError) ReadStationIp(string stationPath)
+    {
+        var configPath = GetStationConfigPath(stationPath);
+        if (!File.Exists(configPath))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            EnsureStationConfigFile(configPath);
+            var json = File.ReadAllText(configPath);
+            var config = JsonSerializer.Deserialize<StationConfig>(json, stationConfigJsonOptions)
+                ?? throw new InvalidDataException("工站 IP 配置文件内容为空。");
+            var normalizedIp = NormalizeStationIp(config.IpAddress);
+            return (normalizedIp, null);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException or JsonException or InvalidDataException or ArgumentException)
+        {
+            return (null, $"工站 IP 配置文件无效：{exception.Message}");
+        }
+    }
+
+    private static string GetStationConfigPath(string stationPath) => Path.Combine(stationPath, StationConfigFileName);
+
+    private static void EnsureStation(int level)
+    {
+        if (level != 2)
+        {
+            throw new InvalidOperationException("只能为 ST 工站配置 IP。");
+        }
+    }
+
+    private static void WriteStationIp(string stationPath, string stationIpAddress)
+    {
+        var normalizedIp = NormalizeStationIp(stationIpAddress);
+        var configPath = GetStationConfigPath(stationPath);
+        if (File.Exists(configPath))
+        {
+            EnsureStationConfigFile(configPath);
+        }
+
+        var tempPath = Path.Combine(stationPath, $"{StationConfigFileName}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            var content = JsonSerializer.Serialize(new StationConfig { IpAddress = normalizedIp }, stationConfigJsonOptions);
+            File.WriteAllText(tempPath, content);
+            if (File.Exists(configPath))
+            {
+                File.Replace(tempPath, configPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            }
+            else
+            {
+                File.Move(tempPath, configPath);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    private static string NormalizeStationIp(string stationIpAddress)
+    {
+        if (string.IsNullOrWhiteSpace(stationIpAddress))
+        {
+            throw new ArgumentException("请输入工站 IP 地址。");
+        }
+
+        if (!IPAddress.TryParse(stationIpAddress.Trim(), out var address) || address.AddressFamily != AddressFamily.InterNetwork)
+        {
+            throw new ArgumentException("请输入有效的 IPv4 地址。");
+        }
+
+        return address.ToString();
+    }
+
+    private static void EnsureStationConfigFile(string configPath)
+    {
+        var attributes = File.GetAttributes(configPath);
+        if ((attributes & FileAttributes.ReparsePoint) != 0)
+        {
+            throw new InvalidOperationException("工站 IP 配置文件不能是符号链接或目录联接。");
+        }
+
+        if ((attributes & FileAttributes.Directory) != 0)
+        {
+            throw new InvalidDataException("工站 IP 配置路径必须是文件，不能是目录。");
+        }
+    }
+
+    private sealed class StationConfig
+    {
+        public string IpAddress { get; set; } = string.Empty;
     }
 
     private static bool IsNodeName(string name, string prefix) =>

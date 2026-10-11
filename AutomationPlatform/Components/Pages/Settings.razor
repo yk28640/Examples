@@ -14,9 +14,10 @@
 <MudText Typo="Typo.h4" GutterBottom="true">项目设置</MudText>
 <MudText Class="mb-4">服务端根目录：@Directories.RootPath</MudText>
 <MudAlert Severity="Severity.Info" Class="mb-4">
-    点击 AP 新增 Line 线体，点击线体新增 ST 工站。前缀固定，只需输入后缀。
+    点击 AP 新增 Line 线体，点击 Line 新增 ST 工站。Line 线体不配置 IP；在 Line 下填写的 IP 仅属于新建的 ST 工站。
+    前缀固定，只需输入后缀。新增 ST 时需配置工站 IP，后续可在选中 ST 后查看和修改。
     仅显示符合命名和层级规则的实际目录，不显示普通文件、其他目录及符号链接。
-    重命名保留目录内容；删除仅限空目录，AP 根目录不可重命名或删除。
+    重命名保留目录内容；删除仅限空目录（ST 目录仅含 IP 配置文件时也允许删除），AP 根目录不可重命名或删除。
 </MudAlert>
 
 <MudButton OnClick="RefreshAsync" Disabled="@busy" StartIcon="@Icons.Material.Filled.Refresh"
@@ -48,7 +49,7 @@
                                 @foreach (var station in line.Children)
                                 {
                                     <MudTreeViewItem T="string" @key="station.RelativePath" Value="@station.RelativePath"
-                                                     Text="@station.Name" Icon="@Icons.Material.Filled.Folder" />
+                                                     Text="@GetStationTreeText(station)" Icon="@Icons.Material.Filled.Folder" />
                                 }
                             </MudTreeViewItem>
                         }
@@ -72,10 +73,30 @@
                     <MudTextField T="string" @bind-Value="newSuffix" Label="@(selectedNode.Level == 0 ? "线体名称后缀" : "工站名称后缀")"
                                   Adornment="Adornment.Start" AdornmentText="@CreatePrefix"
                                   Variant="Variant.Outlined" Immediate="true" Disabled="@busy" />
+                    @if (selectedNode.Level == 1)
+                    {
+                        <MudTextField T="string" @bind-Value="newStationIp" Label="新建 ST 工站 IP"
+                                      Placeholder="例如 192.168.98.10"
+                                      Variant="Variant.Outlined" Immediate="true" Disabled="@busy" Class="mt-3" />
+                    }
                     <MudButton OnClick="CreateAsync" Color="Color.Primary" Variant="Variant.Filled" Class="mt-3"
-                               Disabled="@(busy || string.IsNullOrWhiteSpace(newSuffix))">
+                               Disabled="@(busy || string.IsNullOrWhiteSpace(newSuffix) || (selectedNode.Level == 1 && string.IsNullOrWhiteSpace(newStationIp)))">
                         @(selectedNode.Level == 0 ? "新增线体" : "新增工站")
                     </MudButton>
+                }
+                @if (selectedNode.Level == 2)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.subtitle2">工站 IP：@(selectedNode.StationIpAddress ?? "未配置")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(selectedNode.StationIpError))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mt-2">@selectedNode.StationIpError</MudAlert>
+                    }
+                    <MudTextField T="string" @bind-Value="stationIpInput" Label="工站 IP"
+                                  Placeholder="例如 192.168.98.10"
+                                  Variant="Variant.Outlined" Immediate="true" Disabled="@busy" Class="mt-3" />
+                    <MudButton OnClick="SaveStationIpAsync" Variant="Variant.Filled" Color="Color.Secondary" Class="mt-3"
+                               Disabled="@(busy || string.IsNullOrWhiteSpace(stationIpInput))">保存工站 IP</MudButton>
                 }
                 @if (selectedNode.Level > 0)
                 {
@@ -98,6 +119,8 @@
     private ProjectDirectoryNode? selectedNode;
     private string? selectedPath;
     private string newSuffix = string.Empty;
+    private string newStationIp = string.Empty;
+    private string stationIpInput = string.Empty;
     private string renameSuffix = string.Empty;
     private string? errorMessage;
     private bool busy;
@@ -107,6 +130,10 @@
     private string CreatePrefix => selectedNode?.Level == 0 ? "Line" : "ST";
     private string RenamePrefix => selectedNode?.Level == 1 ? "Line" : "ST";
     private string SelectedFullPath => Path.Combine(Directories.RootPath, selectedPath ?? string.Empty);
+    private static string GetStationTreeText(ProjectDirectoryNode station) =>
+        string.IsNullOrWhiteSpace(station.StationIpAddress)
+            ? station.Name
+            : $"{station.Name}  —  {station.StationIpAddress}";
 
     protected override Task OnInitializedAsync() => RefreshAsync();
 
@@ -123,6 +150,8 @@
         selectedNode = FindNode(path) ?? root;
         selectedPath = selectedNode?.RelativePath;
         newSuffix = string.Empty;
+        newStationIp = string.Empty;
+        stationIpInput = selectedNode?.Level == 2 ? selectedNode.StationIpAddress ?? string.Empty : string.Empty;
         renameSuffix = selectedNode is { Level: > 0 } ? selectedNode.Name[RenamePrefix.Length..] : string.Empty;
     }
 
@@ -174,7 +203,17 @@
     {
         var parent = selectedPath;
         var suffix = newSuffix;
-        return parent is null ? Task.CompletedTask : ExecuteAsync(() => Directories.Create(parent, suffix), "目录已创建。");
+        var stationIp = selectedNode?.Level == 1 ? newStationIp : null;
+        return parent is null ? Task.CompletedTask : ExecuteAsync(() => Directories.Create(parent, suffix, stationIp), "目录已创建。");
+    }
+
+    private Task SaveStationIpAsync()
+    {
+        var path = selectedPath;
+        var stationIp = stationIpInput;
+        return path is null || selectedNode?.Level != 2
+            ? Task.CompletedTask
+            : ExecuteAsync(() => Directories.SetStationIp(path, stationIp), "工站 IP 已保存。");
     }
 
     private Task RenameAsync()
@@ -195,7 +234,7 @@
         try
         {
             confirmed = await Dialogs.ShowMessageBoxAsync("确认删除空目录",
-                $"确定删除 {node.Name} 吗？路径：{Path.Combine(Directories.RootPath, node.RelativePath)}。仅允许删除空目录；包含工站、文件或其他目录时将拒绝删除。",
+                $"确定删除 {node.Name} 吗？路径：{Path.Combine(Directories.RootPath, node.RelativePath)}。仅允许删除空目录；工站目录仅包含 IP 配置文件时也可删除。包含工站、文件或其他目录时将拒绝删除。",
                 yesText: "删除", cancelText: "取消");
         }
         catch (Exception exception)

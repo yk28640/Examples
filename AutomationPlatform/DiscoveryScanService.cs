@@ -1,4 +1,5 @@
 using Siemens.Automation.AutomationTool.API;
+using Siemens.Automation.OMSPlus.IDs;
 
 namespace AutomationPlatform;
 
@@ -62,6 +63,7 @@ public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger)
                                 cancellationToken.ThrowIfCancellationRequested();
                                 string? operatingMode = null;
                                 string? statusError = null;
+                                bool? isProtected = null;
                                 if (device is ICPU cpu)
                                 {
                                     try
@@ -77,11 +79,25 @@ public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger)
                                         logger.LogWarning(exception, "设备 {IpAddress} 状态刷新失败", device.IPString);
                                         statusError = exception.Message;
                                     }
+
+                                    try
+                                    {
+                                        var protectedByCpu = cpu.Protected;
+                                        if (statusError is null || protectedByCpu)
+                                            isProtected = protectedByCpu;
+                                    }
+                                    catch (Exception exception)
+                                    {
+                                        logger.LogWarning(exception, "设备 {IpAddress} CPU 保护状态读取失败", device.IPString);
+                                        statusError = statusError is null
+                                            ? $"CPU 保护状态读取失败：{exception.Message}"
+                                            : $"{statusError}；CPU 保护状态读取失败：{exception.Message}";
+                                    }
                                 }
 
                                 snapshots.Add(new DiscoveredDevice(device.IPString, device.MACString,
                                     device.ProfinetName, device.Description, device.ArticleNumber,
-                                    operatingMode, statusError));
+                                    operatingMode, statusError, isProtected));
                             }
                         }
                     }

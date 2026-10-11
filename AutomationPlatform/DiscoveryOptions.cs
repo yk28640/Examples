@@ -15,6 +15,6 @@ public sealed class DiscoveryOptions
 }
 
 public sealed record DiscoveredDevice(string IpAddress, string MacAddress, string ProfinetName,
-    string Description, string ArticleNumber, string? OperatingMode, string? StatusError);
+    string Description, string ArticleNumber, string? OperatingMode, string? StatusError, bool? IsProtected);
 
 public sealed record DiscoveryScanResult(IReadOnlyList<DiscoveredDevice> Devices, string? Warning);
