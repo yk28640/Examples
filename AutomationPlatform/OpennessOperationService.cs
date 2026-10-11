@@ -6,7 +6,10 @@ using Microsoft.Extensions.Options;
 
 namespace AutomationPlatform;
 
-public sealed record OpennessOperationResult(bool Success, string Message);
+public sealed record OpennessOperationResult(bool Success, string Message)
+{
+    public bool PartialSuccess { get; init; }
+}
 
 public sealed class OpennessOperationService(
     IOptions<DiscoveryOptions> options,
@@ -23,10 +26,8 @@ public sealed class OpennessOperationService(
         var projectPath = ResolvePath(settings.TiaProjectPath);
         if (!File.Exists(projectPath))
             throw new FileNotFoundException("TIA 工程文件不存在，请检查 Discovery 配置。", projectPath);
-        if (string.IsNullOrWhiteSpace(settings.TiaDeviceName))
-            throw new InvalidOperationException("请在 Discovery 配置中指定 TiaDeviceName。");
 
-        return RunAsync("compare", [projectPath, settings.TiaDeviceName],
+        return RunAsync("compare", [projectPath, string.Empty],
             TimeSpan.FromSeconds(settings.CompareTimeoutSeconds), cancellationToken);
     }
 
@@ -119,10 +120,14 @@ public sealed class OpennessOperationService(
                     throw new InvalidOperationException("OpennessServices 结果文件格式无效。");
 
                 var success = process.ExitCode == 0 && succeeded;
-                var message = success ? content : $"操作失败（退出码 {process.ExitCode}）。\n{content}";
+                var partialSuccess = command == "compare" && process.ExitCode == 3 && !succeeded
+                    && lines[2]["State=".Length..].Trim() == "PartialSuccess";
+                var message = partialSuccess
+                    ? $"比较部分完成：成功结果与失败设备信息如下。\n{content}"
+                    : success ? content : $"操作失败（退出码 {process.ExitCode}）。\n{content}";
                 if (!success && !string.IsNullOrWhiteSpace(standardError))
                     message += "\n" + standardError;
-                return new OpennessOperationResult(success, message);
+                return new OpennessOperationResult(success, message) { PartialSuccess = partialSuccess };
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeoutSource.IsCancellationRequested)
             {

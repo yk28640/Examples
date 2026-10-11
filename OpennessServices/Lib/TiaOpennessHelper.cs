@@ -174,13 +174,20 @@ namespace OpennessServices
         public PlcSoftware GetPlcSoftware(string deviceName)
         {
             var device = GetDevice(deviceName);
+            var software = TryGetPlcSoftware(device);
+            if (software != null) return software;
+
+            throw new ArgumentException($"设备 {deviceName} 下未找到 PLC 软件容器(可能不是 CPU 设备)。");
+        }
+
+        private PlcSoftware TryGetPlcSoftware(Device device)
+        {
             foreach (DeviceItem item in device.DeviceItems)
             {
                 var software = FindPlcSoftware(item);
                 if (software != null) return software;
             }
-
-            throw new ArgumentException($"设备 {deviceName} 下未找到 PLC 软件容器(可能不是 CPU 设备)。");
+            return null;
         }
 
         /// <summary>获取工程中所有设备下的全部 PLC 软件容器。</summary>
@@ -283,91 +290,150 @@ namespace OpennessServices
 
         public OnlineCompareSummary ComparePlcProgramOnline(string projectPath, string deviceName)
         {
-
             EnsureProjectIsClosed();
             var project = OpenProject(projectPath);
             try
             {
-                var device = string.IsNullOrWhiteSpace(deviceName)
-                    ? project.Devices.FirstOrDefault()
-                    : project.Devices.Find(deviceName);
-                if (device == null)
-                    throw new ArgumentException($"未找到设备: {deviceName}");
-
-                var plcsoftware = GetPlcSoftware(device.Name);
-                var deviceItem = FindDeviceItemWithSoftware(device);
-                var onlineProvider = deviceItem?.GetService<OnlineProvider>();
-                if (onlineProvider == null)
-                    throw new InvalidOperationException($"设备 {device.Name} 不支持在线服务。");
-            
-                var knowHowProtectedBlockNames = GetAllBlocks(plcsoftware.BlockGroup)
-                                                .Where(b => b.IsKnowHowProtected)
-                                                .Select(b => b.Name)
-                                                .ToList();
-
-                SetConnectionWithSlot(onlineProvider);
-                var result = plcsoftware.CompareToOnline();
-
-            WriteResultOffical(result.RootElement, string.Empty); //only show in console    
-            var details = result.RootElement == null
-                    ? string.Empty
-                    : WriteNonIdenticalResult(result.RootElement, string.Empty);
-
-            // 将 Know-how 保护块名称追加到 WriteResult 的结果中
-            if (knowHowProtectedBlockNames.Count > 0)
-            {
-                details += Environment.NewLine
-                    + Environment.NewLine
-                    + "Know-how 保护的块:"
-                    + Environment.NewLine
-                    + string.Join(Environment.NewLine, knowHowProtectedBlockNames
-                        .Select(name => "块名: " + name));
-            }
-            else
-            {
-                details += Environment.NewLine
-                    + Environment.NewLine
-                    + "Know-how 保护的块: 无";
-            }
-
-            var summary = new OnlineCompareSummary
+                if (!string.IsNullOrWhiteSpace(deviceName))
                 {
-                    Success = result.RootElement != null,
-                    State = result.RootElement == null
-                        ? "Failed"
-                        : result.RootElement.ComparisonResult.ToString(),
-                    Details = details
-                };
+                    var device = project.Devices.Find(deviceName);
+                    if (device == null)
+                        throw new ArgumentException($"未找到设备: {deviceName}");
+                    return ComparePlcDevice(device, GetPlcSoftware(device.Name));
+                }
 
-                Log($"在线程序比较完成: {summary.State}");
-            return summary;
+                var summaries = new List<Tuple<string, OnlineCompareSummary>>();
+                foreach (Device device in project.Devices)
+                {
+                    var plcsoftware = TryGetPlcSoftware(device);
+                    if (plcsoftware != null)
+                        summaries.Add(Tuple.Create(device.Name, ComparePlcDevice(device, plcsoftware)));
+                }
+
+                if (summaries.Count == 0)
+                    throw new InvalidOperationException("项目中未找到包含 PLC 软件的设备。");
+
+                var successfulCount = summaries.Count(item => item.Item2.Success);
+                var partialSuccess = successfulCount > 0 && successfulCount < summaries.Count;
+                var summary = new OnlineCompareSummary
+                {
+                    Success = successfulCount == summaries.Count,
+                    State = partialSuccess
+                        ? "PartialSuccess"
+                        : summaries.Count == 1
+                            ? summaries[0].Item2.State
+                            : string.Join("; ", summaries.Select(item => item.Item1 + ": " + item.Item2.State)),
+                    Details = $"比较完成: {successfulCount} 台成功，{summaries.Count - successfulCount} 台失败。"
+                        + Environment.NewLine + Environment.NewLine
+                        + string.Join(Environment.NewLine + Environment.NewLine,
+                        summaries.Select(item => $"设备: {item.Item1} [{item.Item2.State}]"
+                            + Environment.NewLine + item.Item2.Details))
+                };
+                Log($"所有设备在线程序比较完成: {summary.State}");
+                return summary;
             }
             finally
             {
                 CloseProject();
             }
         }
+
+        private OnlineCompareSummary ComparePlcDevice(Device device, PlcSoftware plcsoftware)
+        {
+            var summary = new OnlineCompareSummary
+            {
+                Success = false,
+                State = "Failed",
+                Details = string.Empty
+            };
+            OnlineProvider onlineProvider = null;
+            var connectionAttempted = false;
+            try
+            {
+                var knowHowProtectedBlockNames = GetAllBlocks(plcsoftware.BlockGroup)
+                    .Where(b => b.IsKnowHowProtected)
+                    .Select(b => b.Name)
+                    .ToList();
+                summary.Details = knowHowProtectedBlockNames.Count == 0
+                    ? "Know-how 保护的块: 无"
+                    : "Know-how 保护的块:" + Environment.NewLine
+                        + string.Join(Environment.NewLine, knowHowProtectedBlockNames.Select(name => "块名: " + name));
+
+                var deviceItem = FindDeviceItemWithSoftware(device, plcsoftware);
+                onlineProvider = deviceItem?.GetService<OnlineProvider>();
+                if (onlineProvider == null)
+                    throw new InvalidOperationException($"设备 {device.Name} 不支持在线服务。");
+
+                Log($"开始比较设备: {device.Name}");
+                connectionAttempted = true;
+                SetConnectionWithSlot(onlineProvider);
+                var result = plcsoftware.CompareToOnline();
+                if (result.RootElement != null)
+                {
+                    WriteResultOffical(result.RootElement, string.Empty);
+                    summary.Details = WriteNonIdenticalResult(result.RootElement, string.Empty)
+                        + Environment.NewLine + Environment.NewLine + summary.Details;
+                    summary.State = result.RootElement.ComparisonResult.ToString();
+                    summary.Success = true;
+                }
+                else
+                {
+                    summary.Details = "在线比较未返回结果。" + Environment.NewLine + summary.Details;
+                }
+            }
+            catch (Exception ex)
+            {
+                summary.Details = $"设备 {device.Name} 比较失败: {ex}"
+                    + Environment.NewLine + summary.Details;
+                Log($"设备 {device.Name} 比较失败: {ex.Message}");
+            }
+            finally
+            {
+                if (connectionAttempted)
+                {
+                    try
+                    {
+                        onlineProvider.GoOffline();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"设备 {device.Name} 退出在线失败: {ex.Message}");
+                    }
+                    try
+                    {
+                        if (m_OnlineConfigurationDelegate != null)
+                            onlineProvider.Configuration.OnlineLegitimation -= m_OnlineConfigurationDelegate;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"设备 {device.Name} 在线回调清理失败: {ex.Message}");
+                    }
+                }
+            }
+            Log($"设备 {device.Name} 在线程序比较完成: {summary.State}");
+            return summary;
+        }
             
-        private static DeviceItem FindDeviceItemWithSoftware(Device device)
+        private static DeviceItem FindDeviceItemWithSoftware(Device device, PlcSoftware plcsoftware)
         {
             foreach (DeviceItem item in device.DeviceItems)
             {
-                var found = FindDeviceItemWithSoftware(item);
+                var found = FindDeviceItemWithSoftware(item, plcsoftware);
                 if (found != null) return found;
-        }
+            }
             return null;
         }
 
-        private static DeviceItem FindDeviceItemWithSoftware(DeviceItem item)
+        private static DeviceItem FindDeviceItemWithSoftware(DeviceItem item, PlcSoftware plcsoftware)
         {
             // 返回既包含 PLC 软件容器又支持在线服务的实际设备项（递归查找）
-            if (item.GetService<SoftwareContainer>()?.Software is PlcSoftware &&
+            if (Equals(item.GetService<SoftwareContainer>()?.Software, plcsoftware) &&
                 item.GetService<OnlineProvider>() != null)
                 return item;
 
             foreach (DeviceItem child in item.DeviceItems)
             {
-                var found = FindDeviceItemWithSoftware(child);
+                var found = FindDeviceItemWithSoftware(child, plcsoftware);
                 if (found != null) return found;
             }
             return null;

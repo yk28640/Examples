@@ -19,16 +19,27 @@ namespace OpennessServices
         private const string UploadResultFilePath = @"E:\Temp\OpennessServices\upload-result.txt";
         static void Main(string[] args)
         {
-           // string applicationPath = @"E:\\Program Files\\SIMATIC Automation Tool SDK Trial\\OpennessServices\\bin\\Debug\\OpennessServices.exe";
-           // string lastWriteTimeUtcFormatted = String.Empty;
-           // DateTime lastWriteTimeUtc;
-           // HashAlgorithm hashAlgorithm = SHA256.Create();
-           // FileStream stream = File.OpenRead(applicationPath);
-           // byte[] hash = hashAlgorithm.ComputeHash(stream);
-           // // this is how the hash should appear in the .reg file
-           // string convertedHash = Convert.ToBase64String(hash);
-           //// lastWriteTimeUtc = fileInfo.LastWriteTimeUtc; // fileInfo not defined
+            // string applicationPath = @"E:\\Program Files\\SIMATIC Automation Tool SDK Trial\\OpennessServices\\bin\\Debug\\OpennessServices.exe";
+            // string lastWriteTimeUtcFormatted = String.Empty;
+            // DateTime lastWriteTimeUtc;
+            // HashAlgorithm hashAlgorithm = SHA256.Create();
+            // FileStream stream = File.OpenRead(applicationPath);
+            // byte[] hash = hashAlgorithm.ComputeHash(stream);
+            // // this is how the hash should appear in the .reg file
+            // string convertedHash = Convert.ToBase64String(hash);
+            //// lastWriteTimeUtc = fileInfo.LastWriteTimeUtc; // fileInfo not defined
+#if DEBUG
+            // 最多等待 60 秒，供 Visual Studio 手动附加。
+            var attachWait = Stopwatch.StartNew();
+            while (!Debugger.IsAttached &&
+                   attachWait.Elapsed < TimeSpan.FromSeconds(60))
+            {
+                System.Threading.Thread.Sleep(200);
+            }
 
+            if (Debugger.IsAttached)
+                Debugger.Break();
+#endif
 
             if (args.Length > 0 && string.Equals(args[0], "compare", StringComparison.OrdinalIgnoreCase))
             {
@@ -55,7 +66,8 @@ namespace OpennessServices
             //RunUpload(argsSet);
 
             Console.WriteLine("用法:");
-            Console.WriteLine("  OpennessServices.exe compare <工程路径> <设备名称> [结果文件路径]");
+            Console.WriteLine("  OpennessServices.exe compare <工程路径> [设备名称] [结果文件路径]");
+            Console.WriteLine("  省略设备名称时比较全部 PLC；指定结果文件时，用空字符串占位设备名称。");
             Console.WriteLine("  OpennessServices.exe upload <目标目录> <工程名称> [结果文件路径] [工站IP]");
         }
         private static void RunUpload(string[] args)
@@ -99,25 +111,21 @@ namespace OpennessServices
             var resultFilePath = args.Length > 3 ? args[3] : ResultFilePath;
 
 #if DEBUG
-            //if (!Debugger.IsAttached)
-            //{
-            //    Debugger.Launch();
-            //}
-
+          
             //测试代码
             //testc(args);
 #endif
             //WriteResultFile("Running", false, "在线程序比较任务已开始。");
 
-            if (args.Length < 3)
+            if (args.Length < 2)
             {
-                WriteResultFile(resultFilePath, "Failed", false, "参数不足，需要工程路径和设备名称。");
+                WriteResultFile(resultFilePath, "Failed", false, "参数不足，需要工程路径。");
                 Environment.ExitCode = 2;
                 return;
             }
 
             var projectPath = args[1];
-            var deviceName = args[2];
+            var deviceName = args.Length > 2 ? args[2] : null;
 
             try
             {
@@ -135,7 +143,8 @@ namespace OpennessServices
                     compareResult = tia.ComparePlcProgramOnline(projectPath, deviceName);
                 }
 
-                Environment.ExitCode = compareResult.Success ? 0 : 1;
+                Environment.ExitCode = compareResult.Success ? 0
+                    : compareResult.State == "PartialSuccess" ? 3 : 1;
                 WriteResultFile(resultFilePath, compareResult.State, compareResult.Success, compareResult.Details);
             }
             catch (Exception ex)

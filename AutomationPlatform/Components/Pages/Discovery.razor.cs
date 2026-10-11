@@ -21,6 +21,7 @@ public partial class Discovery
     private IReadOnlyList<DiscoveredDevice>? scannedDevices;
     private string? compareErrorMessage;
     private string? compareResultMessage;
+    private bool comparePartialSuccess;
     private string? uploadErrorMessage;
     private string? uploadResultMessage;
 
@@ -64,12 +65,14 @@ public partial class Discovery
     {
         compareErrorMessage = null;
         compareResultMessage = null;
+        comparePartialSuccess = false;
     }, async token =>
     {
         var result = await OperationService.CompareAsync(token);
         if (!disposed)
         {
-            if (result.Success)
+            comparePartialSuccess = result.PartialSuccess;
+            if (result.Success || result.PartialSuccess)
                 compareResultMessage = result.Message;
             else
                 compareErrorMessage = result.Message;

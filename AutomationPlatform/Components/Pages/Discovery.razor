@@ -97,11 +97,11 @@
 
 <MudPaper Class="pa-4 mt-4">
     <MudText Typo="Typo.h6" GutterBottom="true">工程操作</MudText>
-    <MudAlert Severity="Severity.Info" Class="mb-4">工程操作不使用上方扫描结果。比较使用配置的 TIA 工程及工程设备；上传仍使用 OpennessServices 内部既有网卡和 IP 配置。</MudAlert>
+    <MudAlert Severity="Severity.Info" Class="mb-4">工程操作不使用上方扫描结果。比较配置的 TIA 工程中的所有 PLC，并检索各 PLC 的 Know-how 保护块；上传仍使用 OpennessServices 内部既有网卡和 IP 配置。</MudAlert>
     <MudText Typo="Typo.body2">比较工程：@Settings.TiaProjectPath</MudText>
-    <MudText Typo="Typo.body2">工程设备：@Settings.TiaDeviceName</MudText>
+    <MudText Typo="Typo.body2">比较范围：工程中所有包含 PLC 软件的设备（不指定设备名称）</MudText>
     <MudText Typo="Typo.body2" Class="mb-4">上传目录：@Settings.UploadDirectory</MudText>
-    <MudButton Color="Color.Primary" Variant="Variant.Outlined" Disabled="@IsBusy" OnClick="CompareDeviceAsync">@(isComparing ? "比较中..." : "比较配置工程")</MudButton>
+    <MudButton Color="Color.Primary" Variant="Variant.Outlined" Disabled="@IsBusy" OnClick="CompareDeviceAsync">@(isComparing ? "比较中..." : "比较所有 PLC")</MudButton>
     <MudButton Color="Color.Secondary" Variant="Variant.Outlined" Disabled="@IsBusy" OnClick="UploadDeviceAsync">@(isUploading ? "上传中..." : "上传配置站点")</MudButton>
     @if (isComparing || isUploading)
     {
@@ -119,6 +119,10 @@
         }
         else
         {
+            @if (comparePartialSuccess)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">比较部分完成：部分 PLC 比较成功，其他 PLC 比较失败。各设备结果和连接错误均保留在下方。</MudAlert>
+            }
             <MudText Typo="Typo.body2" Style="white-space: pre-line">@compareResultMessage</MudText>
         }
     </MudPaper>
