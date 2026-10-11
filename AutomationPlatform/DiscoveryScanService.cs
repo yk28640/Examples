@@ -3,7 +3,7 @@ using Siemens.Automation.OMSPlus.IDs;
 
 namespace AutomationPlatform;
 
-public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger)
+public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger, DiscoveryHistoryService history)
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
@@ -42,7 +42,7 @@ public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger)
         await gate.WaitAsync(cancellationToken);
         try
         {
-            return await Task.Run(() =>
+            var result = await Task.Run(() =>
             {
                 var network = new Network();
                 try
@@ -113,6 +113,20 @@ public sealed class DiscoveryScanService(ILogger<DiscoveryScanService> logger)
                     ((object)network as IDisposable)?.Dispose();
                 }
             }, cancellationToken);
+            var scannedAtUtc = DateTimeOffset.UtcNow;
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await Task.Run(() => history.Save(scannedAtUtc, networkInterface, filter, result), cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogError(exception, "扫描历史数据库保存或整理失败，网卡：{NetworkInterface}", networkInterface);
+                var warning = $"扫描历史数据库保存或整理失败：{exception.Message}";
+                return result with { Warning = string.IsNullOrWhiteSpace(result.Warning) ? warning : $"{result.Warning}；{warning}" };
+            }
+
+            return result;
         }
         finally
         {

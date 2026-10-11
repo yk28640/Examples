@@ -20,26 +20,28 @@ public sealed class EventLogService
 
     private const int MaximumEntries = 5000;
 
-    public IReadOnlyList<OperationLogEntry> ReadOperationLogs()
+    public IReadOnlyList<OperationLogEntry> ReadOperationLogs() => ReadOperationLogs(MaximumEntries);
+
+    public IReadOnlyList<OperationLogEntry> ReadOperationLogs(int maximumEntries, CancellationToken cancellationToken = default)
     {
-       
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumEntries);
 
         var query = new EventLogQuery("SiemensAG-Automation-TIAPortal/Operational",
-       PathType.LogName)
+            PathType.LogName)
         {
             ReverseDirection = true
         };
 
         var entries = new List<OperationLogEntry>();
         using var reader = new EventLogReader(query);
-        for (EventRecord? eventRecord = reader.ReadEvent();
-             eventRecord is not null && entries.Count < MaximumEntries;
-             eventRecord = reader.ReadEvent())
+        while (entries.Count < maximumEntries)
         {
-            using (eventRecord)
-            {
-                entries.Add(CreateEntry(eventRecord));
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            using var eventRecord = reader.ReadEvent();
+            if (eventRecord is null)
+                break;
+
+            entries.Add(CreateEntry(eventRecord));
         }
 
         return entries;

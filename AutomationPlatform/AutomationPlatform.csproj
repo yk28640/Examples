@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="MudBlazor" Version="9.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.*" />
   </ItemGroup>
 
 
@@ -55,5 +56,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="SatSdkFacade.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="obj\ScanHistoryValidation\" />
   </ItemGroup>
 </Project>

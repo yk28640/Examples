@@ -8,6 +8,8 @@ public sealed class DiscoveryOptions
     public string TiaProjectPath { get; set; } = string.Empty;
     public string TiaDeviceName { get; set; } = string.Empty;
     public string UploadDirectory { get; set; } = @"E:\TMP";
+    public string ScanHistoryDatabasePath { get; set; } = @"E:\AP\DiscoveryHistory.db";
+    public int ScanHistoryMaxMegabytes { get; set; } = 100;
     public string ExecutablePath { get; set; } = string.Empty;
     public string ResultDirectory { get; set; } = Path.Combine(Path.GetTempPath(), "AutomationPlatform", "OpennessResults");
     public int CompareTimeoutSeconds { get; set; } = 120;
