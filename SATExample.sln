@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.9.12112.369
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATExample", "SATExample.csproj", "{9A78EDCB-434C-4019-B10B-883DB7F41085}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SATExampleV50", "SATExampleV50.csproj", "{9A78EDCB-434C-4019-B10B-883DB7F41085}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FAF9244F-274A-4DCD-88A9-1446C0E5B107}"
 	ProjectSection(SolutionItems) = preProject
@@ -15,6 +15,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpennessServices", "OpennessServices\OpennessServices.csproj", "{61299A01-E4E8-42D5-B608-3AD2BB5904A9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testConsoleNET10", "..\testConsoleNET10\testConsoleNET10.csproj", "{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SAT402", "..\SAT402\SAT402.csproj", "{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "V14_Openness", "..\V14_Openness\V14_Openness.csproj", "{8FCBACE4-9860-4845-86DB-018A4C93F0CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsServiceV14", "..\WindowsServiceV14\WindowsServiceV14.csproj", "{6166A2BE-C811-4705-9583-25ADC1D1212C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -56,6 +62,30 @@ Global
 		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|x64.ActiveCfg = Release|Any CPU
 		{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}.Release|x64.Build.0 = Release|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Debug|x64.Build.0 = Debug|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Release|x64.ActiveCfg = Release|Any CPU
+		{9D908F6D-5DF9-49C7-8851-92A9CA3C7897}.Release|x64.Build.0 = Release|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Debug|x64.Build.0 = Debug|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Release|x64.ActiveCfg = Release|Any CPU
+		{8FCBACE4-9860-4845-86DB-018A4C93F0CF}.Release|x64.Build.0 = Release|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Debug|x64.Build.0 = Debug|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|x64.ActiveCfg = Release|Any CPU
+		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
