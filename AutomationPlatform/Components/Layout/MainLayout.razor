@@ -2,15 +2,25 @@
 
 <MudThemeProvider Theme="@_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h5" Class="ml-3">Automation</MudText>
+<MudLayout Class="industrial-shell">
+    <MudAppBar Elevation="0" Class="industrial-appbar">
+        <div class="console-brand">
+            <span class="console-mark" aria-hidden="true">AP</span>
+            <div>
+                <MudText Typo="Typo.h6">Automation</MudText>
+                <span class="console-caption">INDUSTRIAL CONTROL CONSOLE</span>
+            </div>
+        </div>
+        <MudSpacer />
+        <span class="console-header-label">自动化工程平台</span>
     </MudAppBar>
-    <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+    <MudDrawer id="nav-drawer" Class="industrial-drawer" Variant="DrawerVariant.Persistent" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="0">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent Class="pt-16 pa-4">
-        @Body
+    <MudMainContent Class="industrial-main">
+        <div class="console-content">
+            @Body
+        </div>
     </MudMainContent>
 </MudLayout>
 
@@ -34,7 +44,7 @@
         {
             PaletteLight = _lightPalette,
             PaletteDark = _darkPalette,
-            LayoutProperties = new LayoutProperties()
+            LayoutProperties = new LayoutProperties { DrawerWidthLeft = "224px" }
         };
     }
 
@@ -60,31 +70,34 @@
 
     private readonly PaletteDark _darkPalette = new()
     {
-        Primary = "#7e6fff",
-        Surface = "#1e1e2d",
-        Background = "#1a1a27",
-        BackgroundGray = "#151521",
-        AppbarText = "#92929f",
-        AppbarBackground = "rgba(26,26,39,0.8)",
-        DrawerBackground = "#1a1a27",
-        ActionDefault = "#74718e",
-        ActionDisabled = "#9999994d",
-        ActionDisabledBackground = "#605f6d4d",
-        TextPrimary = "#b2b0bf",
-        TextSecondary = "#92929f",
-        TextDisabled = "#ffffff33",
-        DrawerIcon = "#92929f",
-        DrawerText = "#92929f",
-        GrayLight = "#2a2833",
-        GrayLighter = "#1e1e2d",
-        Info = "#4a86ff",
-        Success = "#3dcb6c",
-        Warning = "#ffb545",
-        Error = "#ff3f5f",
-        LinesDefault = "#33323e",
-        TableLines = "#33323e",
-        Divider = "#292838",
-        OverlayLight = "#1e1e2d80",
+        Primary = "#45d4e8",
+        Secondary = "#7bb8fa",
+        PrimaryContrastText = "#09151c",
+        SecondaryContrastText = "#09151c",
+        Surface = "#19232d",
+        Background = "#101820",
+        BackgroundGray = "#131d26",
+        AppbarText = "#e1edf5",
+        AppbarBackground = "#121c25",
+        DrawerBackground = "#121c25",
+        ActionDefault = "#9fb4c5",
+        ActionDisabled = "#69808f",
+        ActionDisabledBackground = "#25313c",
+        TextPrimary = "#e1edf5",
+        TextSecondary = "#a0b3c3",
+        TextDisabled = "#69808f",
+        DrawerIcon = "#a0b3c3",
+        DrawerText = "#bccdd9",
+        GrayLight = "#2a3b49",
+        GrayLighter = "#1c2935",
+        Info = "#7bb8fa",
+        Success = "#5bdaa4",
+        Warning = "#ffc46b",
+        Error = "#ff8191",
+        LinesDefault = "#304353",
+        TableLines = "#2a3b49",
+        Divider = "#2a3b49",
+        OverlayLight = "#101820b3",
     };
 
     public string DarkLightModeButtonIcon => _isDarkMode switch
