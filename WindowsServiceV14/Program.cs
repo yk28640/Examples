@@ -16,7 +16,7 @@ namespace WindowsServiceV14
                 service.StartInteractive();
                 try
                 {
-                    Console.WriteLine("服务已启动，访问 http://localhost:5736/test。按 Enter 停止。");
+                    Console.WriteLine($"服务已启动，访问 {service.ListenUrl}test。按 Enter 停止。");
                     System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
                 }
                 finally

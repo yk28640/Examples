@@ -8,6 +8,8 @@ namespace WindowsServiceV14
     {
         private IDisposable _webApp;
 
+        internal string ListenUrl { get; private set; }
+
         public Service1()
         {
             InitializeComponent();
@@ -15,7 +17,9 @@ namespace WindowsServiceV14
 
         protected override void OnStart(string[] args)
         {
-            _webApp = WebApp.Start<Startup>("http://localhost:5736/");
+            var listenUrl = TagProjectConfiguration.LoadListenUrl();
+            _webApp = WebApp.Start<Startup>(listenUrl);
+            ListenUrl = listenUrl;
         }
 
         protected override void OnStop()
