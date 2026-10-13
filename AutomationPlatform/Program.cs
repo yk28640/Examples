@@ -29,6 +29,20 @@ namespace AutomationPlatform
                 .ValidateOnStart();
             builder.Services.AddSingleton<DiscoveryHistoryService>();
             builder.Services.AddSingleton<DiscoveryScanService>();
+            builder.Services.AddOptions<TagSourceOptions>()
+                .Bind(builder.Configuration.GetSection(TagSourceOptions.SectionName))
+                .Validate(settings => settings.RequestTimeoutSeconds is > 0 and <= 60,
+                    "PLC 变量请求超时必须为 1 到 60 秒。")
+                .Validate(TagSourceOptions.HasValidSources,
+                    "PLC 变量来源必须具有唯一的 ID（1 到 64 位字母、数字、下划线或连字符，首位为字母或数字）、非空名称和有效 HTTP/HTTPS BaseUrl；地址不能包含用户凭据、查询参数或片段。")
+                .ValidateOnStart();
+            builder.Services.AddHttpClient(TagSourceApi.HttpClientName, client =>
+                client.Timeout = Timeout.InfiniteTimeSpan)
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                {
+                    AllowAutoRedirect = false,
+                    UseCookies = false
+                });
             builder.Services.AddSingleton<OpennessOperationService>();
             builder.Services.AddSingleton<StationBatchUploadService>();
             builder.Services.AddHostedService(provider => provider.GetRequiredService<StationBatchUploadService>());
@@ -54,6 +68,7 @@ namespace AutomationPlatform
 
             app.MapStaticAssets();
             app.MapDiscoveryHistoryApi().RequireCors("ReadOnlyApi");
+            app.MapTagSourceApi().RequireCors("ReadOnlyApi");
             app.MapGet("/api/event-logs/operational", async (EventLogService eventLogs,
                 ILogger<Program> logger, CancellationToken cancellationToken) =>
             {

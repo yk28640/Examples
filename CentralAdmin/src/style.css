@@ -34,3 +34,35 @@ button:focus-visible{outline:2px solid #42dbc4;outline-offset:3px}
 .log-filter-btn.active{background:#1b3935;color:#67e0c4;box-shadow:0 0 8px rgba(85,223,181,.18)}
 .operation-panel .panel-subhead{flex-wrap:wrap;overflow-wrap:anywhere}.operation-list{max-height:680px;overflow:auto}.operation-item{padding:19px 24px;border-bottom:1px solid #253842}.operation-item:last-child{border-bottom:0}.operation-item-header{display:flex;align-items:center;gap:13px;flex-wrap:wrap}.operation-time,.operation-id{font:11px 'DM Mono',monospace;color:#b7d5d3}.operation-id{color:#7997a0}.log-level{padding:4px 8px;border-radius:3px;font-size:10px;color:#9fdbcf;background:#1b3935}.log-level.warning{color:#f1c887;background:#3a3025}.log-level.error{color:#ffc5c3;background:#3a2629}.operation-content{margin:13px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.8;color:#dce9ea}.operation-meta{display:flex;gap:10px 22px;flex-wrap:wrap;color:#78959e;font-size:10px}.operation-meta strong{color:#bed3d4;font-weight:600;overflow-wrap:anywhere}
 @media(max-width:580px){.operation-panel .panel-header{align-items:flex-start;flex-direction:column}.operation-item{padding:17px 20px}}
+.mobile-navigation{display:none}
+.tag-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;padding:22px 24px;border-bottom:1px solid #253842;background:#13232d}
+.tag-filters label{display:flex;flex:1 1 140px;min-width:0;flex-direction:column;gap:8px;color:#91aab3;font-size:11px}
+.tag-filters .tag-search{flex:2 1 240px}
+.tag-filters input,.tag-filters select{width:100%;height:40px;padding:0 11px;border:1px solid #304a55;border-radius:4px;background:#0d1820;color:#dce9ea;font:12px 'Manrope','Microsoft YaHei',sans-serif;color-scheme:dark}
+.tag-filters input::placeholder{color:#68838f}
+.tag-filters input:focus-visible,.tag-filters select:focus-visible,.tag-table-scroll:focus-visible{outline:2px solid #42dbc4;outline-offset:2px}
+.tag-filters .refresh-button{height:40px}
+.tag-source-panel{margin-bottom:24px}
+.tag-source-controls{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:22px 24px;background:#13232d;border-radius:5px}
+.tag-source-controls label{display:flex;flex:1 1 260px;max-width:460px;min-width:0;flex-direction:column;gap:8px;font-size:11px;color:#91aab3}
+.tag-source-controls select{width:100%;height:42px;padding:0 11px;background:#0d1820;color:#dce9ea;border:1px solid #304a55;border-radius:4px;font:12px 'Manrope','Microsoft YaHei',sans-serif;color-scheme:dark}
+.tag-source-controls select:focus-visible{outline:2px solid #42dbc4;outline-offset:2px}
+.tag-source-controls select:disabled{opacity:.55}
+.tag-source-status{flex:1;display:flex;flex-direction:column;gap:8px;min-width:200px;font-size:12px;color:#68d5bb}
+.tag-source-status small{font-size:10px;color:#91aab3}
+.tag-source-status.source-error{color:#ffc5c3}
+.tags-panel .panel-counter{white-space:normal;text-align:right;overflow-wrap:anywhere}
+.tags-panel .panel-subhead{flex-wrap:wrap}
+.tag-table-scroll{max-height:640px;overflow:auto}
+.tag-table{width:100%;min-width:850px;border-collapse:collapse;text-align:left;font-size:12px}
+.tag-table thead th{position:sticky;top:0;z-index:1;background:#172b34;color:#91b5bc;font-size:10px;letter-spacing:.5px}
+.tag-table th,.tag-table td{padding:16px 20px;border-bottom:1px solid #253842;overflow-wrap:anywhere}
+.tag-table tbody th{color:#e0f0ed;font-weight:600;min-width:160px}
+.tag-table tbody tr:nth-child(even){background:#12212b}
+.tag-table tbody tr:hover{background:#1a3439}
+.tag-table td{color:#a7bdc5}
+.tag-table .tag-index{color:#60808a;font-family:'DM Mono',monospace}
+.tag-table .tag-address{color:#6bdfc2;font-family:'DM Mono',monospace;white-space:nowrap}
+.tag-type{display:inline-block;padding:4px 8px;border:1px solid #345e53;border-radius:3px;background:#1b3935;color:#a5eed9;font:11px 'DM Mono',monospace}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:800px){.mobile-navigation{display:flex;gap:8px;padding:12px 22px;border-bottom:1px solid #20313b}.mobile-navigation .nav-item{flex:1;justify-content:center;margin:0;padding:10px 6px;font-size:12px}.tag-filters{padding:18px 20px}.tag-filters .tag-search{flex-basis:100%}.tags-panel .pager{padding:0 14px}.tags-panel .pager>span{font-size:10px}}

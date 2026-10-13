@@ -1,15 +1,26 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getScan, getScans } from './api/discovery'
 import { getOperationLogs } from './api/eventLogs'
+import TagsPage from './TagsPage.vue'
 
 const currentTab = ref('scans')
 const selectedLogLevel = ref('all')
+const navigation = [
+  { tab: 'scans', hash: '#scan-history', label: '扫描历史' },
+  { tab: 'logs', hash: '#operation-logs', label: '操作日志' },
+  { tab: 'tags', hash: '#plc-tags', label: 'PLC 变量' },
+]
+watch(currentTab, (tab) => {
+  document.title = `CentralAdmin · ${navigation.find((item) => item.tab === tab).label}`
+}, { immediate: true })
 
 function syncTabFromHash() {
   const hash = window.location.hash.toLowerCase()
   if (hash === '#operation-logs' || hash === '#logs') {
     currentTab.value = 'logs'
+  } else if (hash === '#plc-tags') {
+    currentTab.value = 'tags'
   } else {
     currentTab.value = 'scans'
   }
@@ -17,7 +28,7 @@ function syncTabFromHash() {
 
 function switchTab(tab) {
   currentTab.value = tab
-  const targetHash = tab === 'logs' ? '#operation-logs' : '#scan-history'
+  const targetHash = navigation.find((item) => item.tab === tab).hash
   if (window.location.hash !== targetHash) {
     window.location.hash = targetHash
   }
@@ -193,9 +204,19 @@ onUnmounted(() => {
         <span class="nav-symbol">≡</span> 操作日志
         <span v-if="currentTab === 'logs'" class="nav-active-dot"></span>
       </a>
+      <a
+        class="nav-item"
+        :class="{ active: currentTab === 'tags' }"
+        :aria-current="currentTab === 'tags' ? 'page' : undefined"
+        href="#plc-tags"
+        @click.prevent="switchTab('tags')"
+      >
+        <span class="nav-symbol">▤</span> PLC 变量
+        <span v-if="currentTab === 'tags'" class="nav-active-dot"></span>
+      </a>
       <div class="sidebar-note">
         <span class="signal-dot"></span>
-        <span>数据源<br /><strong>AutomationPlatform API</strong></span>
+        <span>数据源<br /><strong>{{ currentTab === 'tags' ? 'PLC 变量接口' : 'AutomationPlatform API' }}</strong></span>
       </div>
       <div class="sidebar-footer">CENTRALADMIN <span>·</span> READ ONLY</div>
     </aside>
@@ -205,17 +226,26 @@ onUnmounted(() => {
         <div v-if="currentTab === 'scans'" class="breadcrumb">
           工作空间 <span>/</span> 设备监控 <span>/</span> <strong>扫描历史</strong>
         </div>
-        <div v-else class="breadcrumb">
+        <div v-else-if="currentTab === 'logs'" class="breadcrumb">
           工作空间 <span>/</span> 系统审计 <span>/</span> <strong>操作日志</strong>
+        </div>
+        <div v-else class="breadcrumb">
+          工作空间 <span>/</span> 设备监控 <span>/</span> <strong>PLC 变量</strong>
         </div>
         <div class="topbar-right">
           <span class="topbar-live">
-            <i></i> {{ currentTab === 'scans' ? '历史数据' : '事件通道' }}
+            <i></i> {{ currentTab === 'scans' ? '历史数据' : currentTab === 'logs' ? '事件通道' : '变量定义' }}
           </span>
           <span class="topbar-divider"></span>
           <span>只读视图</span>
         </div>
       </header>
+      <nav class="mobile-navigation" aria-label="页面导航">
+        <a v-for="item in navigation" :key="item.tab" class="nav-item"
+          :class="{ active: currentTab === item.tab }" :href="item.hash"
+          :aria-current="currentTab === item.tab ? 'page' : undefined"
+          @click.prevent="switchTab(item.tab)">{{ item.label }}</a>
+      </nav>
 
       <!-- 扫描历史页面 -->
       <div v-if="currentTab === 'scans'" id="scan-history" class="dashboard">
@@ -373,6 +403,9 @@ onUnmounted(() => {
         </section>
         <footer class="page-footer"><span>CENTRALADMIN / OPERATION LOGS</span><span>数据由 AutomationPlatform 提供 · 只读模式</span></footer>
       </div>
+      <KeepAlive>
+        <TagsPage v-if="currentTab === 'tags'" />
+      </KeepAlive>
     </main>
   </div>
 </template>
