@@ -1,16 +1,31 @@
 # CentralAdmin
 
-Vue 3 + Vite 工业监控看板，统一读取 AutomationPlatform 的只读 GET API。本界面不能发起设备扫描或写入 PLC 变量。
+Vue 3 + Vite 工业监控看板，通过 GET API 读取 AutomationPlatform 数据和 WindowsServiceV14 的变量/历史比较数据。本界面不能发起设备扫描或写入 PLC 变量。
 
 ## 页面
 
 - 扫描历史（`#scan-history`）：扫描批次与设备快照。
 - 操作日志（`#operation-logs`）：最新 100 条 TIA Portal 操作日志。
 - PLC 变量（`#plc-tags`）：先选择设备来源，再读取该来源的变量集合。表格显示设备、分组、变量表、名称、数据类型与地址，不包含实时变量值。
+- 更改历史（`#changes-history`）：沿用 PLC 变量页的设备来源，查看相邻历史工程比较、各 PLC 的程序块状态及新旧 ModifiedDate。
 
 变量页面支持跨字段关键词搜索、设备/分组/变量表/数据类型组合筛选，每页 25 条，空分组显示为“未分组”。切换来源会取消旧请求，重置筛选及分页；已成功读取的来源按来源 ID 在当前页面会话内缓存，切回不会自动请求，点击“刷新当前来源”更新。不同来源分别保存数据、成功读取时间及错误状态，刷新失败时明确标记缓存不是最新结果，不会将失败伪装为“暂无变量”。重新加载浏览器会清除缓存。
 
 使用侧边栏切换页面，小屏幕使用顶部导航；支持 Hash 地址直达。切换到扫描历史或操作日志页面后，变量页面的当前来源及筛选会保留。
+
+## 程序更改历史
+
+历史页面直接请求所选来源的 `${baseUrl}/GenerateChangesHistory`（不是 `/GetChangesHistory`），不经过 AutomationPlatform 的 `/api` 代理。后端必须提供版本为 1 的历史 JSON：`Version`、`GeneratedAtUtc`、`Projects`、`Entries`；记录包含 `PreviousProject`、`LatestProject`、`ComparedAtUtc`、`Comparisons`。工程字段为 `Path`、`ModifiedUtc`、`Length`；PLC 比较字段为 `Device` 和 `Result`，节点包含左右名称、比较状态、两侧修改时间及 `Elements`。
+
+- 左侧按后端时间线展示旧工程 → 新工程，默认选中最新记录；右侧按 PLC 展示新增、删除、修改、相同块，每页 25 个块，默认只看变化，支持按 PLC/块名/分组路径搜索。
+- 工程文件修改时间决定时间线；实际比较时间、服务端历史生成时间和浏览器成功读取时间分别展示。块 ModifiedDate 保留接口原始精度和时区标记（Z 表示 UTC），缺失一侧显示“—”。只比较 ModifiedDate，不验证程序代码是否相同，也不比较变量表。
+- 首次进入页面自动读取；已成功加载的来源在当前浏览器页面会话中缓存。切回来源或页面不自动重复请求；“刷新当前来源”手动读取，仍由后端决定是否复用 `ChangesHistory.json`。不会自动轮询、重试或强制重建历史。
+- 切换来源或离开页面会取消当前浏览器请求，过期响应不会覆盖新选择。取消或超时不保证停止后端历史生成。刷新失败会保留旧快照及上次成功读取时间，并明确显示失败提示。
+- 历史请求超时为 5 分钟，可在 `src/api/changesHistory.js` 的 `HISTORY_REQUEST_TIMEOUT_MS` 调整；变量请求仍为 75 秒。来源服务必须允许 CentralAdmin 页面源的跨域 GET；生产 HTTPS 页面不能直接请求被浏览器阻止的 HTTP 来源。
+
+运行 `npm test` 验证历史响应校验、API 错误、超时、来源缓存和请求竞态，运行 `npm run build` 验证生产构建。测试使用模拟响应，不会打开或更改真实 TIA 工程。
+
+安装 Chrome/Edge 后可运行 `npm run test:browser`，验证 Hash 导航、筛选/分页、页面缓存、刷新失败保留旧数据及 390px 移动布局。默认查找 Windows 标准安装路径，也可用环境变量 `CHROME_PATH` 指定浏览器。该测试拦截后端请求并使用样例，不访问真实工程；截图保存到 `node_modules/.cache/history-validation/`，不随源码提交。
 
 ## 设备来源配置
 

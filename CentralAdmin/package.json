@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/changesHistory.test.mjs",
+    "test:browser": "node tests/changesHistory.browser.mjs"
   },
   "dependencies": {
     "vue": "^3.5.0"
