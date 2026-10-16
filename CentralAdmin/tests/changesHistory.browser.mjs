@@ -17,6 +17,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const project = (index) => ({ Path: `E:\\历史快照\\项目${index}\\项目${index}.ap14`, ModifiedUtc: `2026-01-0${index}T12:00:00Z`, Length: 100 })
 const projects = [project(1), project(2), project(3)]
 const block = (status, index) => ({
+  ObjectType: index === 1 ? 'TechnologicalObject' : 'Block',
   LeftName: status === 'Removed' ? null : `设备控制/很长的程序块分组路径/FB_${index}`,
   RightName: status === 'Added' ? null : `设备控制/很长的程序块分组路径/FB_${index}`,
   ComparisonResult: status, LatestModifiedDate: status === 'Removed' ? null : '2026-01-03T13:00:00.1234567',
@@ -27,7 +28,7 @@ const comparison = (blocks) => [{ Device: 'PLC_1', Result: {
   LatestModifiedDate: null, PreviousModifiedDate: null, Elements: blocks,
 } }]
 const fixture = {
-  Version: 1, GeneratedAtUtc: '2026-01-04T00:00:00Z', Projects: projects,
+  Version: 2, GeneratedAtUtc: '2026-01-04T00:00:00Z', Projects: projects,
   Entries: [
     { PreviousProject: projects[0], LatestProject: projects[1], ComparedAtUtc: '2026-01-04T00:00:00Z', Comparisons: comparison([block('Identical', 0)]) },
     { PreviousProject: projects[1], LatestProject: projects[2], ComparedAtUtc: '2026-01-04T00:01:00Z',
@@ -127,6 +128,11 @@ try {
   assert.equal(await evaluate('document.title'), 'CentralAdmin · 更改历史')
   assert.ok((await body()).includes('项目3.ap14'), 'latest comparison selected')
   assert.ok((await body()).includes('13:00:00.1234567'), 'block timestamp precision retained')
+  assert.ok(await evaluate("Array.from(document.querySelectorAll('.history-table tbody td')).some(cell => cell.textContent === '工艺对象')"), 'technology object type shown')
+  await evaluate("document.querySelector('#history-object-type').value='TechnologicalObject'; document.querySelector('#history-object-type').dispatchEvent(new Event('change',{bubbles:true}))")
+  await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
+  await evaluate("document.querySelector('#history-object-type').value=''; document.querySelector('#history-object-type').dispatchEvent(new Event('change',{bubbles:true}))")
+  await waitFor("document.querySelectorAll('.history-table tbody tr').length === 3")
   console.log('PASS: direct hash navigation, latest selection, changed-only rows and timestamp precision')
   await evaluate("const input=document.querySelector('#history-search'); input.value='FB_1'; input.dispatchEvent(new Event('input',{bubbles:true}))")
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
@@ -138,7 +144,7 @@ try {
   await click('.history-entry:first-child')
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
   await click('#history-only-changes')
-  await waitFor("document.body.innerText.includes('所有程序块的 ModifiedDate 均相同')")
+  await waitFor("document.body.innerText.includes('所有对象的 ModifiedDate 均相同')")
   await click('.history-entry:last-child')
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 3")
   console.log('PASS: search, all/changed toggle, block pagination and unchanged comparison')

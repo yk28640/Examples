@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getTagSources } from './api/tags'
-import { historyStatuses } from './api/changesHistory'
+import { historyObjectTypes, historyStatuses } from './api/changesHistory'
 import { createChangesHistoryState } from './composables/changesHistoryState'
 
 const history = createChangesHistoryState()
@@ -25,7 +25,8 @@ const filteredBlocks = computed(() => {
   const search = state.value?.keyword.trim().toLocaleLowerCase() ?? ''
   return (selectedEntry.value?.blocks ?? []).filter((block) =>
     (!state.value?.onlyChanges || block.ComparisonResult !== 'Identical') &&
-    (!search || [block.Device, block.LeftName, block.RightName]
+    (!state.value?.objectType || block.ObjectType === state.value.objectType) &&
+    (!search || [block.Device, block.LeftName, block.RightName, historyObjectTypes[block.ObjectType]]
       .some((value) => value?.toLocaleLowerCase().includes(search)))
   )
 })
@@ -46,7 +47,7 @@ const sourceStatus = computed(() => state.value?.loading ? '正在读取'
 let sourcesController
 let sourcesLoaded = false
 
-watch(() => [state.value?.keyword, state.value?.onlyChanges, state.value?.selectedEntryId], () => {
+watch(() => [state.value?.keyword, state.value?.objectType, state.value?.onlyChanges, state.value?.selectedEntryId], () => {
   if (state.value) state.value.page = 1
 })
 
@@ -125,7 +126,7 @@ onUnmounted(leavePage)
       <div>
         <div class="eyebrow"><span class="eyebrow-line"></span> PROGRAM CHANGE HISTORY <span class="eyebrow-index">/ 04</span></div>
         <h1>程序更改历史<span class="title-period">.</span></h1>
-        <p class="subtitle">按工程时间线浏览相邻快照的程序块变化，复用服务端历史缓存。</p>
+        <p class="subtitle">按工程时间线浏览相邻快照的程序块与工艺对象变化，复用服务端历史缓存。</p>
       </div>
       <button class="refresh-button" type="button" :disabled="state?.loading || sourcesLoading || !selectedSource" @click="history.load()">
         <span aria-hidden="true">↻</span> {{ state?.loading ? '读取中…' : '刷新当前来源' }}
@@ -150,7 +151,8 @@ onUnmounted(leavePage)
       <div v-else-if="!sourcesLoading && !sources.length" class="notice warning" role="status">暂无设备来源，请在 src/config/tagSources.js 中配置服务地址。</div>
     </section>
 
-    <div class="notice warning history-limitation" role="note">仅比较程序块 ModifiedDate，不比较代码内容或变量表。刷新不强制后端重算；首次生成可能较慢，离开页面只取消浏览器等待，后端可能继续生成。</div>
+    <div class="notice warning history-limitation" role="note">仅比较程序块与工艺对象的 ModifiedDate，不比较代码内容、具体工艺参数或变量表。刷新不强制后端重算；首次生成可能较慢，离开页面只取消浏览器等待，后端可能继续生成。</div>
+    <div v-if="document?.Version === 1" class="notice warning" role="status">当前来源返回旧版历史，仅包含程序块，不包含工艺对象。升级并重启后端、重新生成历史后刷新页面。</div>
     <div v-if="state?.error" class="notice error" role="alert">
       {{ state.error }} <strong v-if="document">以下为上次成功读取的旧快照，不代表最新结果。</strong>
       <button type="button" :disabled="state.loading" @click="history.load()">重试</button>
@@ -160,7 +162,7 @@ onUnmounted(leavePage)
     <div class="metric-grid">
       <div class="metric-card"><span class="metric-label">工程快照 <span>01 / PROJECTS</span></span><strong>{{ document?.Projects.length ?? '—' }}</strong><span class="metric-caption">当前来源的历史工程</span></div>
       <div class="metric-card"><span class="metric-label">相邻比较 <span>02 / COMPARISONS</span></span><strong>{{ document ? entries.length : '—' }}</strong><span class="metric-caption">按旧工程 → 新工程排列</span></div>
-      <div class="metric-card"><span class="metric-label">变化块记录 <span>03 / CHANGES</span></span><strong class="metric-amber">{{ document ? changedCount : '—' }}</strong><span class="metric-caption">跨比较累计，含新增 / 删除 / 修改，非去重</span></div>
+      <div class="metric-card"><span class="metric-label">变化对象记录 <span>03 / CHANGES</span></span><strong class="metric-amber">{{ document ? changedCount : '—' }}</strong><span class="metric-caption">跨比较累计，含新增 / 删除 / 修改，非去重</span></div>
     </div>
 
     <div v-if="document" class="workspace-grid history-workspace" :aria-busy="state?.loading">
@@ -172,7 +174,7 @@ onUnmounted(leavePage)
           <button v-for="(entry, index) in entries" :key="entry.id" class="scan-item history-entry" :class="{ selected: entry.id === state.selectedEntryId }" type="button" :aria-pressed="entry.id === state.selectedEntryId" @click="selectEntry(entry)">
             <span class="scan-indicator"></span>
             <span class="scan-info">
-              <span class="scan-topline"><strong>比较 {{ String(index + 1).padStart(2, '0') }}</strong><small>{{ entry.changedCount ? `${entry.changedCount} 个变化块` : '无变化' }}</small></span>
+              <span class="scan-topline"><strong>比较 {{ String(index + 1).padStart(2, '0') }}</strong><small>{{ entry.changedCount ? `${entry.changedCount} 个变化对象` : '无变化' }}</small></span>
               <span class="history-project-name" :title="entry.PreviousProject.Path">{{ projectName(entry.PreviousProject.Path) }}</span>
               <span class="history-direction" aria-hidden="true">↓</span>
               <span class="history-project-name" :title="entry.LatestProject.Path">{{ projectName(entry.LatestProject.Path) }}</span>
@@ -184,34 +186,36 @@ onUnmounted(leavePage)
         </div>
       </section>
 
-      <section class="panel history-detail" aria-label="程序块变更详情">
-        <div class="panel-header"><div><div class="panel-kicker">BLOCK DIFFERENCES <span>—— 02</span></div><h2>程序块详情</h2></div><span v-if="selectedEntry" class="panel-counter">{{ selectedEntry.Comparisons.length }} 台 PLC · {{ selectedEntry.blocks.length }} 个块</span></div>
+      <section class="panel history-detail" aria-label="程序块与工艺对象变更详情">
+        <div class="panel-header"><div><div class="panel-kicker">OBJECT DIFFERENCES <span>—— 02</span></div><h2>对象详情</h2></div><span v-if="selectedEntry" class="panel-counter">{{ selectedEntry.Comparisons.length }} 台 PLC · {{ selectedEntry.blocks.length }} 个对象</span></div>
         <template v-if="selectedEntry">
           <div class="history-projects">
             <div><span>旧工程</span><strong>{{ selectedEntry.PreviousProject.Path }}</strong><small>文件修改：{{ formatTime(selectedEntry.PreviousProject.ModifiedUtc) }}</small></div>
             <div><span>新工程</span><strong>{{ selectedEntry.LatestProject.Path }}</strong><small>文件修改：{{ formatTime(selectedEntry.LatestProject.ModifiedUtc) }}</small></div>
           </div>
-          <div class="panel-subhead history-subhead"><span>比较执行：{{ formatTime(selectedEntry.ComparedAtUtc) }}</span><span>块修改时间保留接口原值；Z 表示 UTC</span></div>
-          <div class="history-status-summary" aria-label="程序块状态统计">
+          <div class="panel-subhead history-subhead"><span>比较执行：{{ formatTime(selectedEntry.ComparedAtUtc) }}</span><span>对象修改时间保留接口原值；Z 表示 UTC</span></div>
+          <div class="history-status-summary" aria-label="对象状态统计">
             <span v-for="(label, status) in historyStatuses" :key="status" class="history-badge" :class="status">{{ label }} {{ selectedEntry.counts[status] }}</span>
           </div>
           <div class="tag-filters history-filters">
-            <label class="tag-search" for="history-search">搜索 PLC / 程序块 / 分组<input id="history-search" v-model="state.keyword" type="search" placeholder="输入名称或分组路径" /></label>
+            <label class="tag-search" for="history-search">搜索 PLC / 对象 / 分组<input id="history-search" v-model="state.keyword" type="search" placeholder="输入名称或分组路径" /></label>
+            <label for="history-object-type">对象类型<select id="history-object-type" v-model="state.objectType"><option value="">全部类型</option><option v-for="(label, type) in historyObjectTypes" :key="type" :value="type">{{ label }}</option></select></label>
             <label class="history-only-changes" for="history-only-changes"><input id="history-only-changes" v-model="state.onlyChanges" type="checkbox" />只看变化</label>
           </div>
           <div v-if="!filteredBlocks.length" class="state-message empty-state">
             <span class="empty-glyph">◇</span>
-            <strong>{{ !selectedEntry.blocks.length ? '该次比较没有程序块' : !selectedEntry.changedCount && state.onlyChanges && !state.keyword.trim() ? '所有程序块的 ModifiedDate 均相同' : '暂无匹配的程序块' }}</strong>
-            <span v-if="selectedEntry.blocks.length">可调整搜索条件或取消“只看变化”查看全部程序块。</span>
+            <strong>{{ !selectedEntry.blocks.length ? '该次比较没有对象' : !selectedEntry.changedCount && state.onlyChanges && !state.keyword.trim() && !state.objectType ? '所有对象的 ModifiedDate 均相同' : '暂无匹配的对象' }}</strong>
+            <span v-if="selectedEntry.blocks.length">可调整类型、搜索条件或取消“只看变化”查看全部对象。</span>
           </div>
-          <section v-for="group in blockGroups" :key="group.device" class="history-plc" :aria-label="`${group.device} 程序块`">
-            <div class="device-heading"><h3>PLC · {{ group.device }}</h3><span>本页 {{ group.blocks.length }} 个块</span></div>
-            <div class="tag-table-scroll history-table-scroll" tabindex="0" :aria-label="`${group.device} 程序块比较表，可横向滚动`">
+          <section v-for="group in blockGroups" :key="group.device" class="history-plc" :aria-label="`${group.device} 比较对象`">
+            <div class="device-heading"><h3>PLC · {{ group.device }}</h3><span>本页 {{ group.blocks.length }} 个对象</span></div>
+            <div class="tag-table-scroll history-table-scroll" tabindex="0" :aria-label="`${group.device} 对象比较表，可横向滚动`">
               <table class="tag-table history-table">
-                <caption class="visually-hidden">{{ group.device }} 程序块修改时间比较</caption>
-                <thead><tr><th scope="col">程序块 / 分组</th><th scope="col">状态</th><th scope="col">旧 ModifiedDate</th><th scope="col">新 ModifiedDate</th></tr></thead>
-                <tbody><tr v-for="block in group.blocks" :key="JSON.stringify([block.LeftName, block.RightName])">
+                <caption class="visually-hidden">{{ group.device }} 程序块与工艺对象修改时间比较</caption>
+                <thead><tr><th scope="col">对象 / 分组</th><th scope="col">类型</th><th scope="col">状态</th><th scope="col">旧 ModifiedDate</th><th scope="col">新 ModifiedDate</th></tr></thead>
+                <tbody><tr v-for="block in group.blocks" :key="JSON.stringify([block.ObjectType, block.LeftName, block.RightName])">
                   <th scope="row">{{ block.LeftName || block.RightName }}</th>
+                  <td>{{ historyObjectTypes[block.ObjectType] }}</td>
                   <td><span class="history-badge" :class="block.ComparisonResult">{{ historyStatuses[block.ComparisonResult] }}</span></td>
                   <td class="mono history-block-time">{{ blockTime(block.PreviousModifiedDate) }}</td>
                   <td class="mono history-block-time">{{ blockTime(block.LatestModifiedDate) }}</td>
@@ -219,9 +223,9 @@ onUnmounted(leavePage)
               </table>
             </div>
           </section>
-          <div class="pager"><button type="button" :disabled="state.page <= 1" @click="changePage(state.page - 1)">← 上一页</button><span>{{ state.page }} / {{ pageCount }} · 共 {{ filteredBlocks.length }} 个块</span><button type="button" :disabled="state.page >= pageCount" @click="changePage(state.page + 1)">下一页 →</button></div>
+          <div class="pager"><button type="button" :disabled="state.page <= 1" @click="changePage(state.page - 1)">← 上一页</button><span>{{ state.page }} / {{ pageCount }} · 共 {{ filteredBlocks.length }} 个对象</span><button type="button" :disabled="state.page >= pageCount" @click="changePage(state.page + 1)">下一页 →</button></div>
         </template>
-        <div v-else class="state-message empty-state"><span class="empty-glyph">▤</span><strong>请选择历史比较记录</strong><span>从左侧时间线选择记录查看程序块详情。</span></div>
+        <div v-else class="state-message empty-state"><span class="empty-glyph">▤</span><strong>请选择历史比较记录</strong><span>从左侧时间线选择记录查看对象详情。</span></div>
       </section>
     </div>
     <div v-else-if="!state?.loading && !state?.error && !sourcesLoading && selectedSource" class="state-message empty-state"><strong>尚未读取更改历史</strong><span>点击“刷新当前来源”读取历史。</span></div>

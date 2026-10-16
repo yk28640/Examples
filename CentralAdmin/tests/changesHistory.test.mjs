@@ -67,7 +67,7 @@ test('unchanged, empty roots, empty timeline and multiple PLCs remain distinct',
 
 test('invalid version, dates, properties, status and duplicate entries are rejected', () => {
   for (const modify of [
-    (data) => { data.Version = 2 },
+    (data) => { data.Version = 3 },
     (data) => { data.GeneratedAtUtc = 'invalid date' },
     (data) => { data.Projects[0].Length = -1 },
     (data) => { delete data.Entries[0].Comparisons },
@@ -78,6 +78,26 @@ test('invalid version, dates, properties, status and duplicate entries are rejec
     const data = fixture(); modify(data)
     assert.throws(() => api.normalizeChangesHistory(data), /数据格式异常/)
   }
+})
+
+test('version 2 distinguishes same-name blocks and technological objects in all statuses', () => {
+  const data = fixture()
+  data.Version = 2
+  const elements = data.Entries[0].Comparisons[0].Result.Elements
+  elements.forEach((item) => { item.ObjectType = 'TechnologicalObject' })
+  elements.push({ ...elements[0], ObjectType: 'Block' })
+  const entry = api.normalizeChangesHistory(data).Entries[0]
+  assert.equal(entry.blocks.length, 5)
+  assert.equal(entry.changedCount, 4)
+  assert.equal(entry.blocks[0].LeftName, entry.blocks[4].LeftName)
+  assert.equal(entry.blocks[0].ObjectType, 'TechnologicalObject')
+  assert.equal(entry.blocks[4].ObjectType, 'Block')
+  assert.deepEqual(entry.counts, { Identical: 1, Different: 2, Added: 1, Removed: 1 })
+  assert.equal(api.normalizeChangesHistory(fixture()).Entries[0].blocks[0].ObjectType, 'Block')
+  delete elements[0].ObjectType
+  assert.throws(() => api.normalizeChangesHistory(data), /对象类型/)
+  elements[0].ObjectType = 'Unknown'
+  assert.throws(() => api.normalizeChangesHistory(data), /对象类型/)
 })
 
 test('API calls selected source GenerateChangesHistory with cancellation signal', async (t) => {

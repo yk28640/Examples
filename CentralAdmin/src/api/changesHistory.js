@@ -4,6 +4,9 @@ export const HISTORY_REQUEST_TIMEOUT_MS = 300000
 export const historyStatuses = {
   Identical: '相同', Different: '修改', Added: '新增', Removed: '删除',
 }
+export const historyObjectTypes = {
+  Block: '程序块', TechnologicalObject: '工艺对象',
+}
 
 function invalid(message) {
   throw new Error(`更改历史数据格式异常：${message}`)
@@ -25,27 +28,33 @@ function validateProject(project) {
   }
 }
 
-function validateNode(node, root = false, depth = 0) {
+function validateNode(node, version, root = false, depth = 0) {
   if (depth > 100 || !isObject(node) || !Object.hasOwn(historyStatuses, node.ComparisonResult)
-    || !Array.isArray(node.Elements)) invalid('程序块节点或比较状态无效。')
-  for (const field of ['LeftName', 'RightName']) {
-    if (node[field] !== null && typeof node[field] !== 'string') invalid('程序块名称无效。')
+    || !Array.isArray(node.Elements)) invalid('对象节点或比较状态无效。')
+  if (!root) {
+    const type = node.ObjectType ?? (version === 1 ? 'Block' : null)
+    if (!Object.hasOwn(historyObjectTypes, type) || (version === 1 && type !== 'Block')) {
+      invalid('对象类型无效；版本 2 必须包含 Block 或 TechnologicalObject。')
+    }
   }
-  if (!root && !node.LeftName && !node.RightName) invalid('程序块缺少名称。')
+  for (const field of ['LeftName', 'RightName']) {
+    if (node[field] !== null && typeof node[field] !== 'string') invalid('对象名称无效。')
+  }
+  if (!root && !node.LeftName && !node.RightName) invalid('对象缺少名称。')
   for (const field of ['LatestModifiedDate', 'PreviousModifiedDate']) {
-    if (node[field] !== null && !isDate(node[field])) invalid('程序块修改时间无效。')
+    if (node[field] !== null && !isDate(node[field])) invalid('对象修改时间无效。')
   }
   if (!root && ((!node.LeftName && node.LatestModifiedDate !== null)
     || (!node.RightName && node.PreviousModifiedDate !== null)
     || (node.LeftName && !isDate(node.LatestModifiedDate))
-    || (node.RightName && !isDate(node.PreviousModifiedDate)))) invalid('程序块名称与修改时间不匹配。')
-  node.Elements.forEach((child) => validateNode(child, false, depth + 1))
+    || (node.RightName && !isDate(node.PreviousModifiedDate)))) invalid('对象名称与修改时间不匹配。')
+  node.Elements.forEach((child) => validateNode(child, version, false, depth + 1))
 }
 
 export function normalizeChangesHistory(data) {
-  if (!isObject(data) || data.Version !== 1 || !isDate(data.GeneratedAtUtc)
+  if (!isObject(data) || ![1, 2].includes(data.Version) || !isDate(data.GeneratedAtUtc)
     || !Array.isArray(data.Projects) || !Array.isArray(data.Entries)) {
-    invalid('接口必须返回版本为 1 的历史对象及 Projects、Entries 数组。')
+    invalid('接口必须返回版本为 1 或 2 的历史对象及 Projects、Entries 数组。')
   }
   data.Projects.forEach(validateProject)
   const ids = new Set()
@@ -64,12 +73,12 @@ export function normalizeChangesHistory(data) {
       if (!isObject(comparison) || typeof comparison.Device !== 'string' || !comparison.Device.trim()
         || devices.has(comparison.Device)) invalid('PLC 设备名称缺失或重复。')
       devices.add(comparison.Device)
-      validateNode(comparison.Result, true)
+      validateNode(comparison.Result, data.Version, true)
       function append(node) {
         if (node.Elements.length) {
           node.Elements.forEach(append)
         } else {
-          blocks.push({ ...node, Device: comparison.Device })
+          blocks.push({ ...node, ObjectType: node.ObjectType ?? 'Block', Device: comparison.Device })
         }
       }
       comparison.Result.Elements.forEach(append)

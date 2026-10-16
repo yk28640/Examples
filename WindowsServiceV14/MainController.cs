@@ -6,12 +6,14 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Web.Http;
+using Newtonsoft.Json;
 using Siemens.Engineering;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.Tags;
+using Siemens.Engineering.SW.TechnologicalObjects;
 
 namespace WindowsServiceV14
 {
@@ -19,6 +21,11 @@ namespace WindowsServiceV14
     {
         private static readonly object TagsLock = new object();
         private static List<TagInfo> cachedTags;
+
+        private const int HistoryCacheVersion = 2;
+        private static readonly object HistoryLock = new object();
+        private static string cachedHistoryPath;
+        private static ChangesHistoryDocument cachedHistory;
 
         [HttpGet]
         [Route("test")]
@@ -99,6 +106,215 @@ namespace WindowsServiceV14
             }
         }
 
+        [HttpGet]
+        [Route("GenerateChangesHistory")]
+        public IHttpActionResult GenerateChangesHistory()
+        {
+            try
+            {
+                return Json(GetChangesHistory(TagProjectConfiguration.LoadComparasionFolder(), CompareProjects));
+            }
+            catch (InvalidDataException ex)
+            {
+                System.Diagnostics.Trace.TraceError("历史比较输入无效: {0}", ex);
+                return BadRequest(ex.Message);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                System.Diagnostics.Trace.TraceError("历史比较目录不存在: {0}", ex);
+                return BadRequest("配置的比较目录不存在。");
+            }
+            catch (PlcPairingException ex)
+            {
+                System.Diagnostics.Trace.TraceError("历史比较 PLC 配对失败: {0}", ex);
+                return Content(HttpStatusCode.Conflict, ex.Message);
+            }
+            catch (HistoryChangedException ex)
+            {
+                return Content(HttpStatusCode.Conflict, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("生成工程更改历史失败: {0}", ex);
+                return Content(HttpStatusCode.ServiceUnavailable, "无法生成工程更改历史，请检查服务端日志。");
+            }
+        }
+
+        private static ChangesHistoryDocument GetChangesHistory(string folder,
+            Func<FileInfo, FileInfo, List<PlcComparison>> compareProjects)
+        {
+            lock (HistoryLock)
+            {
+                folder = Path.GetFullPath(folder);
+                var cachePath = Path.Combine(folder, "ChangesHistory.json");
+                var projects = GetHistoryProjects(folder);
+                if (projects.Count < 2)
+                    throw new InvalidDataException("比较目录中至少需要两个 .ap14 工程文件。");
+
+                var existing = string.Equals(cachedHistoryPath, cachePath, StringComparison.OrdinalIgnoreCase)
+                    ? cachedHistory : LoadHistoryCache(cachePath);
+                if (existing != null && existing.Version != HistoryCacheVersion)
+                    existing = null;
+                var reusable = new Dictionary<string, ChangesHistoryEntry>(StringComparer.Ordinal);
+                if (existing != null)
+                {
+                    foreach (var entry in existing.Entries)
+                    {
+                        if (entry != null && entry.PreviousProject != null && entry.LatestProject != null
+                            && entry.Comparisons != null && entry.Comparisons.Count > 0
+                            && entry.Comparisons.All(item => item != null && item.Result != null))
+                            reusable[GetHistoryPairKey(entry.PreviousProject, entry.LatestProject)] = entry;
+                    }
+                }
+
+                var changed = existing == null || !SameHistoryProjects(existing.Projects, projects)
+                    || existing.Entries.Count != projects.Count - 1;
+                var entries = new List<ChangesHistoryEntry>();
+                for (var i = 1; i < projects.Count; i++)
+                {
+                    var previous = projects[i - 1];
+                    var latest = projects[i];
+                    ChangesHistoryEntry entry;
+                    if (!reusable.TryGetValue(GetHistoryPairKey(previous, latest), out entry))
+                    {
+                        var comparisons = compareProjects(new FileInfo(latest.Path), new FileInfo(previous.Path));
+                        entry = new ChangesHistoryEntry
+                        {
+                            PreviousProject = previous,
+                            LatestProject = latest,
+                            ComparedAtUtc = DateTime.UtcNow,
+                            Comparisons = comparisons
+                        };
+                        changed = true;
+                    }
+                    entries.Add(entry);
+                }
+
+                if (!SameHistoryProjects(projects, GetHistoryProjects(folder)))
+                    throw new HistoryChangedException("比较期间工程文件发生变化，未更新历史缓存，请稍后重试。");
+
+                var document = new ChangesHistoryDocument
+                {
+                    Version = HistoryCacheVersion,
+                    GeneratedAtUtc = changed ? DateTime.UtcNow : existing.GeneratedAtUtc,
+                    Projects = projects,
+                    Entries = entries
+                };
+                if (changed || !File.Exists(cachePath))
+                    SaveHistoryCache(cachePath, document);
+
+                cachedHistoryPath = cachePath;
+                cachedHistory = document;
+                return document;
+            }
+        }
+
+        private class HistoryChangedException : Exception
+        {
+            public HistoryChangedException(string message) : base(message) { }
+        }
+
+        private static ChangesHistoryDocument LoadHistoryCache(string path)
+        {
+            if (!File.Exists(path))
+                return null;
+
+            try
+            {
+                var document = JsonConvert.DeserializeObject<ChangesHistoryDocument>(
+                    File.ReadAllText(path, Encoding.UTF8));
+                if (document == null || document.Version != HistoryCacheVersion
+                    || document.Projects == null || document.Entries == null)
+                {
+                    System.Diagnostics.Trace.TraceWarning("历史缓存格式或版本无效，将重新生成: {0}", path);
+                    return null;
+                }
+                return document;
+            }
+            catch (JsonException ex)
+            {
+                System.Diagnostics.Trace.TraceWarning("历史缓存无法解析，将重新生成: {0}", ex);
+                return null;
+            }
+        }
+
+        private static void SaveHistoryCache(string path, ChangesHistoryDocument document)
+        {
+            var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporaryPath, JsonConvert.SerializeObject(document, Formatting.Indented),
+                    new UTF8Encoding(false));
+                if (File.Exists(path))
+                    File.Replace(temporaryPath, path, null);
+                else
+                    File.Move(temporaryPath, path);
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(temporaryPath))
+                        File.Delete(temporaryPath);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Trace.TraceWarning("清理历史缓存临时文件失败: {0}", ex);
+                }
+            }
+        }
+
+        private static List<HistoryProjectFile> GetHistoryProjects(string folder)
+        {
+            return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                .Where(path => string.Equals(Path.GetExtension(path), ".ap14", StringComparison.OrdinalIgnoreCase))
+                .Select(path => new FileInfo(path))
+                .Select(file => new HistoryProjectFile
+                {
+                    Path = file.FullName,
+                    ModifiedUtc = file.LastWriteTimeUtc,
+                    Length = file.Length
+                })
+                .OrderBy(file => file.ModifiedUtc)
+                .ThenBy(file => file.Path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool SameHistoryProjects(List<HistoryProjectFile> left, List<HistoryProjectFile> right)
+        {
+            return left != null && right != null
+                && string.Equals(JsonConvert.SerializeObject(left), JsonConvert.SerializeObject(right),
+                    StringComparison.Ordinal);
+        }
+
+        private static string GetHistoryPairKey(HistoryProjectFile previous, HistoryProjectFile latest)
+        {
+            return JsonConvert.SerializeObject(new[] { previous, latest });
+        }
+
+        public class HistoryProjectFile
+        {
+            public string Path { get; set; }
+            public DateTime ModifiedUtc { get; set; }
+            public long Length { get; set; }
+        }
+
+        public class ChangesHistoryEntry
+        {
+            public HistoryProjectFile PreviousProject { get; set; }
+            public HistoryProjectFile LatestProject { get; set; }
+            public DateTime ComparedAtUtc { get; set; }
+            public List<PlcComparison> Comparisons { get; set; }
+        }
+
+        public class ChangesHistoryDocument
+        {
+            public int Version { get; set; }
+            public DateTime GeneratedAtUtc { get; set; }
+            public List<HistoryProjectFile> Projects { get; set; }
+            public List<ChangesHistoryEntry> Entries { get; set; }
+        }
+
         private static List<PlcComparison> CompareProjects(FileInfo latestFile, FileInfo previousFile)
         {
             using (var latestPortal = new TiaPortal(TiaPortalMode.WithoutUserInterface))
@@ -123,41 +339,11 @@ namespace WindowsServiceV14
                         var comparisons = new List<PlcComparison>();
                         foreach (var pair in latestPlcs.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
                         {
-                            var latestBlocks = FindBlocks(pair.Value);
-                            var previousBlocks = FindBlocks(previousPlcs[pair.Key]);
-                            var root = new ComparisonNode
-                            {
-                                LeftName = pair.Key,
-                                RightName = pair.Key,
-                                ComparisonResult = "Identical",
-                                Elements = new List<ComparisonNode>()
-                            };
-                            foreach (var name in latestBlocks.Keys.Union(previousBlocks.Keys, StringComparer.OrdinalIgnoreCase)
-                                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
-                            {
-                                DateTime latestDate;
-                                DateTime previousDate;
-                                var inLatest = latestBlocks.TryGetValue(name, out latestDate);
-                                var inPrevious = previousBlocks.TryGetValue(name, out previousDate);
-                                var status = !inLatest ? "Removed" : !inPrevious ? "Added"
-                                    : latestDate == previousDate ? "Identical" : "Different";
-                                if (status != "Identical")
-                                    root.ComparisonResult = "Different";
-
-                                root.Elements.Add(new ComparisonNode
-                                {
-                                    LeftName = inLatest ? name : null,
-                                    RightName = inPrevious ? name : null,
-                                    ComparisonResult = status,
-                                    LatestModifiedDate = inLatest ? (DateTime?)latestDate : null,
-                                    PreviousModifiedDate = inPrevious ? (DateTime?)previousDate : null,
-                                    Elements = new List<ComparisonNode>()
-                                });
-                            }
                             comparisons.Add(new PlcComparison
                             {
                                 Device = pair.Key,
-                                Result = root
+                                Result = CompareObjects(pair.Key, FindComparisonObjects(pair.Value),
+                                    FindComparisonObjects(previousPlcs[pair.Key]))
                             });
                         }
                         return comparisons;
@@ -198,25 +384,94 @@ namespace WindowsServiceV14
                 FindPlcs(child, deviceName, plcs);
         }
 
-        private static Dictionary<string, DateTime> FindBlocks(PlcSoftware plcSoftware)
+        private static ComparisonNode CompareObjects(string deviceName,
+            Dictionary<string, ComparisonObjectSnapshot> latestObjects,
+            Dictionary<string, ComparisonObjectSnapshot> previousObjects)
         {
-            var blocks = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-            AppendBlocks(plcSoftware.BlockGroup, "", blocks);
-            return blocks;
+            var root = new ComparisonNode
+            {
+                LeftName = deviceName,
+                RightName = deviceName,
+                ComparisonResult = "Identical",
+                Elements = new List<ComparisonNode>()
+            };
+            foreach (var key in latestObjects.Keys.Union(previousObjects.Keys, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+            {
+                ComparisonObjectSnapshot latest;
+                ComparisonObjectSnapshot previous;
+                var inLatest = latestObjects.TryGetValue(key, out latest);
+                var inPrevious = previousObjects.TryGetValue(key, out previous);
+                var status = !inLatest ? "Removed" : !inPrevious ? "Added"
+                    : latest.ModifiedDate == previous.ModifiedDate ? "Identical" : "Different";
+                if (status != "Identical")
+                    root.ComparisonResult = "Different";
+                root.Elements.Add(new ComparisonNode
+                {
+                    ObjectType = (latest ?? previous).ObjectType,
+                    LeftName = inLatest ? latest.Name : null,
+                    RightName = inPrevious ? previous.Name : null,
+                    ComparisonResult = status,
+                    LatestModifiedDate = inLatest ? (DateTime?)latest.ModifiedDate : null,
+                    PreviousModifiedDate = inPrevious ? (DateTime?)previous.ModifiedDate : null,
+                    Elements = new List<ComparisonNode>()
+                });
+            }
+            return root;
         }
 
-        private static void AppendBlocks(PlcBlockGroup group, string groupPath, Dictionary<string, DateTime> blocks)
+        private static Dictionary<string, ComparisonObjectSnapshot> FindComparisonObjects(PlcSoftware plcSoftware)
+        {
+            var objects = new Dictionary<string, ComparisonObjectSnapshot>(StringComparer.OrdinalIgnoreCase);
+            AppendBlocks(plcSoftware.BlockGroup, "", objects);
+            var group = plcSoftware.TechnologicalObjectGroup;
+            if (group != null)
+                foreach (TechnologicalInstanceDB technologicalObject in group.TechnologicalObjects)
+                    AddComparisonObject(objects, technologicalObject.Name, "TechnologicalObject", technologicalObject.ModifiedDate);
+            return objects;
+        }
+
+        private static void AppendBlocks(PlcBlockGroup group, string groupPath,
+            Dictionary<string, ComparisonObjectSnapshot> objects)
         {
             foreach (PlcBlock block in group.Blocks)
             {
-                var name = groupPath + block.Name;
-                if (blocks.ContainsKey(name))
-                    throw new PlcPairingException("存在重复的程序块: " + name);
-                blocks.Add(name, block.ModifiedDate);
+                var technologicalObject = block as TechnologicalInstanceDB;
+                if (technologicalObject != null)
+                    AddComparisonObject(objects, technologicalObject.Name, "TechnologicalObject", technologicalObject.ModifiedDate);
+                else
+                    AddComparisonObject(objects, groupPath + block.Name, "Block", block.ModifiedDate);
             }
 
             foreach (PlcBlockUserGroup child in group.Groups)
-                AppendBlocks(child, groupPath + child.Name + "/", blocks);
+                AppendBlocks(child, groupPath + child.Name + "/", objects);
+        }
+
+        private static void AddComparisonObject(Dictionary<string, ComparisonObjectSnapshot> objects,
+            string name, string objectType, DateTime modifiedDate)
+        {
+            var key = objectType + "/" + name;
+            ComparisonObjectSnapshot existing;
+            if (objects.TryGetValue(key, out existing))
+            {
+                // 工艺对象可能同时出现在块组和工艺对象组中，只统计一次。
+                if (objectType == "TechnologicalObject" && existing.ModifiedDate == modifiedDate)
+                    return;
+                throw new PlcPairingException("存在重复或不一致的比较对象: " + name);
+            }
+            objects.Add(key, new ComparisonObjectSnapshot
+            {
+                Name = name,
+                ObjectType = objectType,
+                ModifiedDate = modifiedDate
+            });
+        }
+
+        private class ComparisonObjectSnapshot
+        {
+            public string Name { get; set; }
+            public string ObjectType { get; set; }
+            public DateTime ModifiedDate { get; set; }
         }
 
         public class PlcComparison
@@ -232,6 +487,7 @@ namespace WindowsServiceV14
 
         public class ComparisonNode
         {
+            public string ObjectType { get; set; }
             public string LeftName { get; set; }
             public string RightName { get; set; }
             public string ComparisonResult { get; set; }
