@@ -1,13 +1,13 @@
 # CentralAdmin
 
-Vue 3 + Vite 工业监控看板，通过 GET API 读取 AutomationPlatform 数据和 WindowsServiceV14 的变量/历史比较数据。本界面不能发起设备扫描或写入 PLC 变量。
+Vue 3 + Vite 工业监控看板，读取 AutomationPlatform 数据和 WindowsServiceV14 的变量/历史比较数据，并可通过 POST 触发后端离线程序块详细比较。本界面不能发起设备扫描或写入 PLC 变量。
 
 ## 页面
 
 - 扫描历史（`#scan-history`）：扫描批次与设备快照。
 - 操作日志（`#operation-logs`）：最新 100 条 TIA Portal 操作日志。
 - PLC 变量（`#plc-tags`）：先选择设备来源，再读取该来源的变量集合。表格显示设备、分组、变量表、名称、数据类型与地址，不包含实时变量值。
-- 更改历史（`#changes-history`）：沿用 PLC 变量页的设备来源，查看相邻历史工程比较、各 PLC 的程序块状态及新旧 ModifiedDate。
+- 更改历史（`#changes-history`）：沿用 PLC 变量页的设备来源，查看相邻历史工程比较、各 PLC 的程序块/工艺对象状态及新旧 ModifiedDate。
 
 变量页面支持跨字段关键词搜索、设备/分组/变量表/数据类型组合筛选，每页 25 条，空分组显示为“未分组”。切换来源会取消旧请求，重置筛选及分页；已成功读取的来源按来源 ID 在当前页面会话内缓存，切回不会自动请求，点击“刷新当前来源”更新。不同来源分别保存数据、成功读取时间及错误状态，刷新失败时明确标记缓存不是最新结果，不会将失败伪装为“暂无变量”。重新加载浏览器会清除缓存。
 
@@ -15,10 +15,16 @@ Vue 3 + Vite 工业监控看板，通过 GET API 读取 AutomationPlatform 数�
 
 ## 程序更改历史
 
-历史页面直接请求所选来源的 `${baseUrl}/GenerateChangesHistory`（不是 `/GetChangesHistory`），不经过 AutomationPlatform 的 `/api` 代理。后端必须提供版本为 1 的历史 JSON：`Version`、`GeneratedAtUtc`、`Projects`、`Entries`；记录包含 `PreviousProject`、`LatestProject`、`ComparedAtUtc`、`Comparisons`。工程字段为 `Path`、`ModifiedUtc`、`Length`；PLC 比较字段为 `Device` 和 `Result`，节点包含左右名称、比较状态、两侧修改时间及 `Elements`。
+历史页面直接请求所选来源的 `${baseUrl}/GenerateChangesHistory`（不是 `/GetChangesHistory`），不经过 AutomationPlatform 的 `/api` 代理。历史 JSON 包含 `Version`、`GeneratedAtUtc`、`Projects`、`Entries`；记录包含 `PreviousProject`、`LatestProject`、`ComparedAtUtc`、`Comparisons`。工程字段为 `Path`、`ModifiedUtc`、`Length`；PLC 比较字段为 `Device` 和 `Result`，节点包含左右名称、比较状态、两侧修改时间及 `Elements`。
 
-- 左侧按后端时间线展示旧工程 → 新工程，默认选中最新记录；右侧按 PLC 展示新增、删除、修改、相同块，每页 25 个块，默认只看变化，支持按 PLC/块名/分组路径搜索。
-- 工程文件修改时间决定时间线；实际比较时间、服务端历史生成时间和浏览器成功读取时间分别展示。块 ModifiedDate 保留接口原始精度和时区标记（Z 表示 UTC），缺失一侧显示“—”。只比较 ModifiedDate，不验证程序代码是否相同，也不比较变量表。
+版本 2/3 同时包含程序块和 `TechnologicalObjectGroup.TechnologicalObjects` 工艺对象，叶节点的 `ObjectType` 必须为 `Block` 或 `TechnologicalObject`。类型和对象路径共同标识比较对象，同名不同类型独立显示；同一个工艺对象从两个入口读到时只统计一次。前端兼容版本 1（缺失类型视为程序块）和版本 2，但旧版本没有详细比较入口。升级并重启 WindowsServiceV14 后，旧缓存将失效，首次请求重新生成版本 3 的 `ChangesHistory.json`；浏览器中的旧快照需要手动刷新。
+
+版本 3 为修改的普通程序块提供 `ExportId`，导出失败时提供 `ExportError`。点击可操作的“修改”状态后，前端向所选来源的 `/api/block-comparisons` 提交标识，查询 `/api/block-comparisons/{taskId}`，成功后获取 `/api/block-comparisons/{taskId}/report`。XML 不离开后端；ACTCLI 必须安装在 WindowsServiceV14 电脑，不需要客户端启动助手。PDF 以 Blob URL 在页面预览并支持下载，关闭报告或离开页面释放 Blob。后端执行失败可重试；同一导出对的运行任务及有效已完成报告会复用。浏览器最多等待 10 分钟，超时或关闭页面不停止后端任务。
+
+详细配置、可信内网边界、资源限制和 Windows 服务账户验收见 [后端比较部署说明](../docs/block-comparisons.md)。
+
+- 左侧保留时间线排序切换，默认选中最新记录；右侧按 PLC 展示新增、删除、修改、相同对象，每页 25 个，默认只看变化，支持类型筛选和按 PLC/对象名/分组路径搜索。
+- 工程文件修改时间决定时间线；实际比较时间、服务端历史生成时间和浏览器成功读取时间分别展示。对象 ModifiedDate 保留接口原始精度和时区标记（Z 表示 UTC），缺失一侧显示“—”。只比较 ModifiedDate，不验证程序代码或工艺参数具体值是否相同，也不比较变量表。
 - 首次进入页面自动读取；已成功加载的来源在当前浏览器页面会话中缓存。切回来源或页面不自动重复请求；“刷新当前来源”手动读取，仍由后端决定是否复用 `ChangesHistory.json`。不会自动轮询、重试或强制重建历史。
 - 切换来源或离开页面会取消当前浏览器请求，过期响应不会覆盖新选择。取消或超时不保证停止后端历史生成。刷新失败会保留旧快照及上次成功读取时间，并明确显示失败提示。
 - 历史请求超时为 5 分钟，可在 `src/api/changesHistory.js` 的 `HISTORY_REQUEST_TIMEOUT_MS` 调整；变量请求仍为 75 秒。来源服务必须允许 CentralAdmin 页面源的跨域 GET；生产 HTTPS 页面不能直接请求被浏览器阻止的 HTTP 来源。
@@ -62,4 +68,4 @@ export const tagSources = [
 
 变量来源配置位于前端项目中并会公开给浏览器用户；不要在来源地址中嵌入凭据。浏览器标签请求超时为 75 秒。
 
-只读 API 目前匿名开放，部署时请限制可访问的网络范围；来源地址应只由可信管理员维护。
+现有读取接口以及新增的比较/报告接口均匿名开放，部署时必须通过防火墙限制可信内网范围；不要对公网开放。比较接口可启动服务器上的固定 ACTCLI 进程，报告不提供用户级隔离。来源地址应只由可信管理员维护。新增比较接口还需允许 CORS POST/OPTIONS 及 Content-Type 请求头；CORS 不是身份验证。

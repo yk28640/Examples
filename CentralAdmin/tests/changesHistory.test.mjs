@@ -4,6 +4,7 @@ import { createServer } from 'vite'
 
 let server
 let api
+let comparisons
 let createState
 let tagSources
 const timestamp = '2026-01-01T01:02:03.1234567Z'
@@ -38,6 +39,7 @@ function deferred() {
 before(async () => {
   server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
   api = await server.ssrLoadModule('/src/api/changesHistory.js')
+  comparisons = await server.ssrLoadModule('/src/api/blockComparisons.js')
   createState = (await server.ssrLoadModule('/src/composables/changesHistoryState.js')).createChangesHistoryState
   tagSources = (await server.ssrLoadModule('/src/config/tagSources.js')).tagSources
 })
@@ -67,7 +69,7 @@ test('unchanged, empty roots, empty timeline and multiple PLCs remain distinct',
 
 test('invalid version, dates, properties, status and duplicate entries are rejected', () => {
   for (const modify of [
-    (data) => { data.Version = 2 },
+    (data) => { data.Version = 4 },
     (data) => { data.GeneratedAtUtc = 'invalid date' },
     (data) => { data.Projects[0].Length = -1 },
     (data) => { delete data.Entries[0].Comparisons },
@@ -78,6 +80,26 @@ test('invalid version, dates, properties, status and duplicate entries are rejec
     const data = fixture(); modify(data)
     assert.throws(() => api.normalizeChangesHistory(data), /数据格式异常/)
   }
+})
+
+test('version 2 distinguishes same-name blocks and technological objects in all statuses', () => {
+  const data = fixture()
+  data.Version = 2
+  const elements = data.Entries[0].Comparisons[0].Result.Elements
+  elements.forEach((item) => { item.ObjectType = 'TechnologicalObject' })
+  elements.push({ ...elements[0], ObjectType: 'Block' })
+  const entry = api.normalizeChangesHistory(data).Entries[0]
+  assert.equal(entry.blocks.length, 5)
+  assert.equal(entry.changedCount, 4)
+  assert.equal(entry.blocks[0].LeftName, entry.blocks[4].LeftName)
+  assert.equal(entry.blocks[0].ObjectType, 'TechnologicalObject')
+  assert.equal(entry.blocks[4].ObjectType, 'Block')
+  assert.deepEqual(entry.counts, { Identical: 1, Different: 2, Added: 1, Removed: 1 })
+  assert.equal(api.normalizeChangesHistory(fixture()).Entries[0].blocks[0].ObjectType, 'Block')
+  delete elements[0].ObjectType
+  assert.throws(() => api.normalizeChangesHistory(data), /对象类型/)
+  elements[0].ObjectType = 'Unknown'
+  assert.throws(() => api.normalizeChangesHistory(data), /对象类型/)
 })
 
 test('API calls selected source GenerateChangesHistory with cancellation signal', async (t) => {
@@ -184,4 +206,73 @@ test('deactivation aborts first load and returning resumes it without accepting 
   assert.equal(state.state.value.document, null)
   pending[1].resolve(result(api.normalizeChangesHistory(fixture(['Added'])))); await resumed
   assert.equal(state.state.value.document.Entries[0].counts.Added, 1)
+})
+
+test('version 3 only enables exported modified ordinary blocks', () => {
+  const data = fixture()
+  data.Version = 3
+  const nodes = data.Entries[0].Comparisons[0].Result.Elements
+  nodes.forEach((item) => { item.ObjectType = 'Block' })
+  nodes[0].ExportId = 'a'.repeat(32)
+  const blocks = api.normalizeChangesHistory(data).Entries[0].blocks
+  assert.deepEqual(blocks.map(comparisons.canCompareBlock), [true, false, false, false])
+  assert.equal(comparisons.canCompareBlock({ ...blocks[0], ObjectType: 'TechnologicalObject' }), false)
+  assert.equal(comparisons.canCompareBlock({ ...blocks[0], ExportError: '导出失败' }), false)
+  for (const change of [
+    { ExportId: '../report' }, { ObjectType: 'TechnologicalObject' },
+    { ComparisonResult: 'Added' }, { ExportError: '导出失败' },
+  ]) {
+    const invalid = structuredClone(data)
+    Object.assign(invalid.Entries[0].Comparisons[0].Result.Elements[0], change)
+    assert.throws(() => api.normalizeChangesHistory(invalid), /导出/)
+  }
+})
+
+const taskFixture = (state = 'Queued') => ({ Id: 'b'.repeat(32), ExportId: 'a'.repeat(32), State: state,
+  Message: '后端比较状态', ExpiresUtc: '2030-01-01T00:00:00Z' })
+
+test('comparison requests use selected backend, opaque ids and JSON POST; no XML is transferred', async (t) => {
+  const calls = []
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    calls.push({ url, init })
+    return new Response(JSON.stringify(taskFixture()))
+  })
+  await comparisons.createBlockComparison(tagSources[0].id, 'a'.repeat(32))
+  await comparisons.getBlockComparison(tagSources[0].id, 'b'.repeat(32))
+  assert.equal(calls[0].url, `${tagSources[0].baseUrl.replace(/\/+$/, '')}/api/block-comparisons`)
+  assert.equal(calls[0].init.method, 'POST')
+  assert.deepEqual(JSON.parse(calls[0].init.body), { ExportId: 'a'.repeat(32) })
+  assert.equal(calls[1].init.method, 'GET')
+  assert.equal(calls[1].url, `${calls[0].url}/${'b'.repeat(32)}`)
+  assert.throws(() => comparisons.getBlockComparison(tagSources[0].id, '../secret'), /无效/)
+  assert.equal(calls.length, 2)
+})
+
+test('comparison API reports failures and rejects invalid task states', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify('队列已满'), { status: 429 }))
+  await assert.rejects(comparisons.createBlockComparison(tagSources[0].id, 'a'.repeat(32)), /429.*队列已满/)
+  fetch.mock.mockImplementation(async () => new Response(JSON.stringify(taskFixture('Unknown'))))
+  await assert.rejects(comparisons.getBlockComparison(tagSources[0].id, 'b'.repeat(32)), /格式无效/)
+  for (const state of ['Queued', 'Running', 'Succeeded', 'Failed']) assert.equal(comparisons.validateTask(taskFixture(state)).State, state)
+})
+
+test('PDF downloads validate content type, empty body and maximum size', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => new Response('%PDF-1.4\n%%EOF', { headers: { 'Content-Type': 'application/pdf' } }))
+  const pdf = await comparisons.getBlockReport(tagSources[0].id, 'b'.repeat(32))
+  assert.equal(pdf.type, 'application/pdf')
+  assert.match(await pdf.text(), /^%PDF-/)
+  fetch.mock.mockImplementation(async () => new Response('<html>error</html>'))
+  await assert.rejects(comparisons.getBlockReport(tagSources[0].id, 'b'.repeat(32)), /未返回 PDF/)
+  fetch.mock.mockImplementation(async () => new Response('', { headers: { 'Content-Type': 'application/pdf' } }))
+  await assert.rejects(comparisons.getBlockReport(tagSources[0].id, 'b'.repeat(32)), /为空/)
+  fetch.mock.mockImplementation(async () => new Response('large', { headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(101 * 1024 * 1024) } }))
+  await assert.rejects(comparisons.getBlockReport(tagSources[0].id, 'b'.repeat(32)), /过大/)
+})
+
+test('comparison polling is cancellable without leaving a pending timer', async () => {
+  const controller = new AbortController()
+  const pending = comparisons.waitForPoll(controller.signal, 60000)
+  controller.abort()
+  await assert.rejects(pending, { name: 'AbortError' })
+  await assert.rejects(comparisons.waitForPoll(controller.signal), { name: 'AbortError' })
 })

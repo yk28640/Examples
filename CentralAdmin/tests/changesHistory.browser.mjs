@@ -17,6 +17,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const project = (index) => ({ Path: `E:\\历史快照\\项目${index}\\项目${index}.ap14`, ModifiedUtc: `2026-01-0${index}T12:00:00Z`, Length: 100 })
 const projects = [project(1), project(2), project(3)]
 const block = (status, index) => ({
+  ObjectType: index === 1 ? 'TechnologicalObject' : 'Block',
+  ExportId: status === 'Different' && index !== 1 ? 'a'.repeat(32) : null,
   LeftName: status === 'Removed' ? null : `设备控制/很长的程序块分组路径/FB_${index}`,
   RightName: status === 'Added' ? null : `设备控制/很长的程序块分组路径/FB_${index}`,
   ComparisonResult: status, LatestModifiedDate: status === 'Removed' ? null : '2026-01-03T13:00:00.1234567',
@@ -27,7 +29,7 @@ const comparison = (blocks) => [{ Device: 'PLC_1', Result: {
   LatestModifiedDate: null, PreviousModifiedDate: null, Elements: blocks,
 } }]
 const fixture = {
-  Version: 1, GeneratedAtUtc: '2026-01-04T00:00:00Z', Projects: projects,
+  Version: 3, GeneratedAtUtc: '2026-01-04T00:00:00Z', Projects: projects,
   Entries: [
     { PreviousProject: projects[0], LatestProject: projects[1], ComparedAtUtc: '2026-01-04T00:00:00Z', Comparisons: comparison([block('Identical', 0)]) },
     { PreviousProject: projects[1], LatestProject: projects[2], ComparedAtUtc: '2026-01-04T00:01:00Z',
@@ -42,6 +44,9 @@ let socket
 let sessionId
 let historyRequests = 0
 let errorMode = false
+let comparisonErrorMode = false
+let comparisonRequests = 0
+let reportRequests = 0
 let sequence = 0
 const pending = new Map()
 const exceptions = []
@@ -97,17 +102,37 @@ try {
       const { requestId, request } = message.params
       let status = 200
       let value = []
+      let contentType = 'application/json'
+      let rawBody
       if (request.url.includes('/GenerateChangesHistory')) {
         historyRequests++
         status = errorMode ? 503 : 200
         value = errorMode ? '模拟历史服务暂不可用' : fixture
+      } else if (request.url.includes('/api/block-comparisons')) {
+        if (request.method === 'OPTIONS') {
+          status = 204
+          rawBody = ''
+        } else if (request.url.endsWith('/report')) {
+          reportRequests++
+          contentType = 'application/pdf'
+          rawBody = '%PDF-1.4\n%%EOF'
+        } else {
+          if (request.method === 'POST') {
+            comparisonRequests++
+            assert.deepEqual(JSON.parse(request.postData), { ExportId: 'a'.repeat(32) })
+          }
+          value = { Id: 'b'.repeat(32), ExportId: 'a'.repeat(32),
+            State: comparisonErrorMode ? 'Failed' : request.method === 'POST' ? 'Queued' : 'Succeeded',
+            Message: comparisonErrorMode ? '模拟 ACTCLI 比较失败' : 'PDF 报告已生成', ExpiresUtc: '2030-01-01T00:00:00Z' }
+        }
       } else if (request.url.includes('/api/discovery/scans')) {
         value = { items: [], totalCount: 0, page: 1, pageSize: 10 }
       }
       command('Fetch.fulfillRequest', {
         requestId, responseCode: status,
-        responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }],
-        body: Buffer.from(JSON.stringify(value)).toString('base64'),
+        responseHeaders: [{ name: 'Content-Type', value: contentType }, { name: 'Access-Control-Allow-Origin', value: '*' },
+          { name: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' }, { name: 'Access-Control-Allow-Headers', value: 'Content-Type' }],
+        body: Buffer.from(rawBody ?? JSON.stringify(value)).toString('base64'),
       }).catch((error) => failures.push(error))
     }
   })
@@ -119,14 +144,37 @@ try {
   await command('Network.setBlockedURLs', { urls: ['*fonts.googleapis.com*', '*fonts.gstatic.com*'] })
   await command('Fetch.enable', { patterns: [
     { urlPattern: '*/GenerateChangesHistory' }, { urlPattern: '*/getTags' }, { urlPattern: `${origin}/api/*` },
+    { urlPattern: '*/api/block-comparisons*' },
   ] })
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   await command('Page.navigate', { url: `${origin}/#changes-history` })
   await waitFor("document.querySelectorAll('.history-entry').length === 2 && document.querySelectorAll('.history-table tbody tr').length === 3")
   assert.equal(historyRequests, 1, 'first entry loads history once')
+  assert.equal(await evaluate("document.querySelectorAll('.compare-button').length"), 1, 'only modified ordinary blocks are clickable')
+  await click('.compare-button')
+  await waitFor("!!document.querySelector('.report-frame') && !!document.querySelector('.comparison-report a[download]')")
+  assert.equal(comparisonRequests, 1)
+  assert.equal(reportRequests, 1)
+  const blobUrl = await evaluate("document.querySelector('.report-frame').getAttribute('src')")
+  assert.ok(blobUrl.startsWith('blob:'), 'PDF is previewed through a local blob URL')
+  await click('.comparison-report .refresh-button')
+  await waitFor("!document.querySelector('.comparison-report')")
+  assert.ok(await evaluate(`fetch(${JSON.stringify(blobUrl)}).then(() => false, () => true)`), 'closing revokes the PDF blob')
+  comparisonErrorMode = true
+  await click('.compare-button')
+  await waitFor("document.querySelector('.comparison-report .error')?.innerText.includes('模拟 ACTCLI 比较失败')")
+  comparisonErrorMode = false
+  await click('.comparison-report .error button')
+  await waitFor("!!document.querySelector('.report-frame')")
+  await click('.comparison-report .refresh-button')
   assert.equal(await evaluate('document.title'), 'CentralAdmin · 更改历史')
   assert.ok((await body()).includes('项目3.ap14'), 'latest comparison selected')
   assert.ok((await body()).includes('13:00:00.1234567'), 'block timestamp precision retained')
+  assert.ok(await evaluate("Array.from(document.querySelectorAll('.history-table tbody td')).some(cell => cell.textContent === '工艺对象')"), 'technology object type shown')
+  await evaluate("document.querySelector('#history-object-type').value='TechnologicalObject'; document.querySelector('#history-object-type').dispatchEvent(new Event('change',{bubbles:true}))")
+  await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
+  await evaluate("document.querySelector('#history-object-type').value=''; document.querySelector('#history-object-type').dispatchEvent(new Event('change',{bubbles:true}))")
+  await waitFor("document.querySelectorAll('.history-table tbody tr').length === 3")
   console.log('PASS: direct hash navigation, latest selection, changed-only rows and timestamp precision')
   await evaluate("const input=document.querySelector('#history-search'); input.value='FB_1'; input.dispatchEvent(new Event('input',{bubbles:true}))")
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
@@ -138,7 +186,7 @@ try {
   await click('.history-entry:first-child')
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 1")
   await click('#history-only-changes')
-  await waitFor("document.body.innerText.includes('所有程序块的 ModifiedDate 均相同')")
+  await waitFor("document.body.innerText.includes('所有对象的 ModifiedDate 均相同')")
   await click('.history-entry:last-child')
   await waitFor("document.querySelectorAll('.history-table tbody tr').length === 3")
   console.log('PASS: search, all/changed toggle, block pagination and unchanged comparison')

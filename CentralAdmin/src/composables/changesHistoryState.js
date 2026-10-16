@@ -12,7 +12,7 @@ export function createChangesHistoryState(fetchHistory = getChangesHistory) {
     if (!states.value.has(id)) {
       states.value.set(id, {
         document: null, fetchedAtUtc: null, loading: false, error: '',
-        selectedEntryId: '', onlyChanges: true, keyword: '', page: 1,
+        selectedEntryId: '', onlyChanges: true, keyword: '', objectType: '', page: 1,
       })
     }
     return states.value.get(id)
