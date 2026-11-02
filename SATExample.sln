@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.9.12112.369
@@ -17,6 +17,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testConsoleNET10", "..\testConsoleNET10\testConsoleNET10.csproj", "{3D1BBA73-51E4-4E98-881C-26DCDEA060F5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsServiceV14", "..\WindowsServiceV14\WindowsServiceV14.csproj", "{6166A2BE-C811-4705-9583-25ADC1D1212C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceV14", "ServiceV14\ServiceV14.csproj", "{B48E104A-734E-4D8F-8F19-C647AB697452}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -66,6 +68,14 @@ Global
 		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|x64.ActiveCfg = Release|Any CPU
 		{6166A2BE-C811-4705-9583-25ADC1D1212C}.Release|x64.Build.0 = Release|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Debug|x64.Build.0 = Debug|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Release|x64.ActiveCfg = Release|Any CPU
+		{B48E104A-734E-4D8F-8F19-C647AB697452}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

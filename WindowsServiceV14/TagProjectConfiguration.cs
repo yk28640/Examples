@@ -6,17 +6,31 @@ using Newtonsoft.Json;
 
 namespace WindowsServiceV14
 {
+    /// <summary>读取可执行文件目录中的 tagsconfig.json，并按使用场景校验路径和选项。</summary>
     internal class TagProjectConfiguration
     {
         [JsonProperty("projectPath")]
         public string ProjectPath { get; set; }
 
+        // 保留既有 JSON 键的拼写，确保兼容已经部署的配置文件。
         [JsonProperty("comparasionFolder")]
         public string ComparasionFolder { get; set; }
 
         [JsonProperty("listenIp")]
         public string ListenIp { get; set; }
 
+        [JsonProperty("blockComparison")]
+        public BlockComparisonOptions BlockComparison { get; set; }
+
+        /// <summary>加载比较资源限制，缺少该配置节时使用默认值，再统一校验范围。</summary>
+        internal static BlockComparisonOptions LoadBlockComparison()
+        {
+            var settings = Load()?.BlockComparison ?? new BlockComparisonOptions();
+            settings.Validate();
+            return settings;
+        }
+
+        /// <summary>获取标签读取所用工程，要求绝对路径且文件存在。</summary>
         public static string LoadProjectPath()
         {
             var configuration = Load();
@@ -30,6 +44,7 @@ namespace WindowsServiceV14
             return configuration.ProjectPath;
         }
 
+        /// <summary>获取历史扫描及导出存储使用的目录，要求绝对路径且目录存在。</summary>
         public static string LoadComparasionFolder()
         {
             var configuration = Load();
@@ -43,6 +58,7 @@ namespace WindowsServiceV14
             return configuration.ComparasionFolder;
         }
 
+        /// <summary>生成固定 5736 端口的监听地址，仅接受 localhost 或 IPv4 地址。</summary>
         public static string LoadListenUrl()
         {
             var configuration = Load();
@@ -56,6 +72,7 @@ namespace WindowsServiceV14
             return $"http://{listenIp}:5736/";
         }
 
+        /// <summary>每次从程序基目录读取配置，不依赖 Windows 服务进程的当前工作目录。</summary>
         private static TagProjectConfiguration Load()
         {
             var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tagsconfig.json");

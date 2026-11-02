@@ -47,11 +47,15 @@
 	  <None Remove="109760829_SAT_UploadServiceData_SatV313_EXE_V102\**" />
 	  <Compile Remove="AutomationPlatform\**" />
 	  <Compile Remove="OpennessServices\**" />
+	  <Compile Remove="ServiceV14\**" />
+	  <EmbeddedResource Remove="ServiceV14\**" />
+	  <None Remove="ServiceV14\**" />
 	  <Compile Remove="Tests\BlockComparisonValidation\**" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <None Include=".github\copilot-instructions.md" />
+	  <None Include="ServiceV14\ServiceV14.csproj" />
 	  <None Include="Tests\BlockComparisonValidation\BlockComparisonValidation.csproj" />
 	</ItemGroup>
 

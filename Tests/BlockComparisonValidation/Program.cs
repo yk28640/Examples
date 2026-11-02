@@ -117,7 +117,7 @@ internal static class Program
             {
                 var parameters = new CompilerParameters(new[] { "System.dll" }, executable) { GenerateExecutable = true };
                 var result = compiler.CompileAssemblyFromSource(parameters,
-                    "using System; using System.IO; using System.Threading; class Fake { static int Main(string[] a) { var mode = File.ReadAllText(a[0]); if(mode == \"hang\") Thread.Sleep(20000); if(mode == \"slow\") Thread.Sleep(2000); if(mode == \"fail\") return 2; File.WriteAllText(a[4], \"%PDF-1.4\\nfixture\\n%%EOF\"); return 0; } }");
+                    "using System; using System.IO; using System.Threading; class Fake { static int Main(string[] a) { var mode = File.ReadAllText(a[0]); if(mode == \"hang\") Thread.Sleep(20000); if(mode == \"slow\") Thread.Sleep(2000); if(mode == \"fail\") return 2; File.WriteAllText(a[3], \"%PDF-1.4\\nfixture\\n%%EOF\"); return 0; } }");
                 Check(!result.Errors.HasErrors, "compile isolated fake ACTCLI (never runs Siemens tool)");
             }
             File.WriteAllText(config, JsonConvert.SerializeObject(new
@@ -208,6 +208,9 @@ internal static class Program
             using (var host = WebApp.Start<Startup>("http://localhost:" + port + "/"))
             using (var client = new HttpClient { BaseAddress = new Uri("http://localhost:" + port + "/") })
             {
+                var probe = client.GetAsync("test").Result;
+                Check(probe.StatusCode == HttpStatusCode.OK && probe.Content.ReadAsStringAsync().Result == "Helloworld",
+                    "cross-assembly host discovers backend probe route");
                 var invalid = client.PostAsync("api/block-comparisons", new StringContent("{\"ExportId\":\"../file\"}", System.Text.Encoding.UTF8, "application/json")).Result;
                 Check(invalid.StatusCode == HttpStatusCode.BadRequest, "HTTP POST rejects invalid export ID");
                 var large = client.PostAsync("api/block-comparisons", new StringContent(new string('x', 2048), System.Text.Encoding.UTF8, "application/json")).Result;

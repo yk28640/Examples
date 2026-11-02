@@ -1,5 +1,14 @@
 {
     "projectPath": "E:\\projects\\V14PrjTest20261012\\V14PrjTest20261012.ap14",
     "comparasionFolder": "F:\\comparasionFolder",
-    "listenIp": "localhost"
+    "listenIp": "localhost",
+    "blockComparison": {
+        "ExecutablePath": "C:\\Program Files\\Siemens\\Automation\\SIMATIC Automation Compare Tool\\app-1.4.0\\ACT-CLI\\ACTCLI.exe",
+        "TimeoutSeconds": 180,
+        "MaxConcurrency": 1,
+        "QueueCapacity": 8,
+        "RetentionHours": 168,
+        "MaxJobs": 100,
+        "MaxFileMegabytes": 20
+    }
 }

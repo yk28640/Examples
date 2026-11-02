@@ -1,4 +1,10 @@
 <Project>
+	<ItemGroup>
+	<Compile Include="BlockExportStore.cs" />
+	  <Compile Include="BlockComparisonRunner.cs" />
+	  <Compile Include="BlockComparisonService.cs" />
+	<Compile Include="BlockComparisonsController.cs" />
+  </ItemGroup>
   <ItemGroup>
 	<None Update="tagsconfig.json">
 	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
