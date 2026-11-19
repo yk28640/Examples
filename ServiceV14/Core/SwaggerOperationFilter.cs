@@ -12,12 +12,30 @@ namespace ServiceV14
         public void Apply(Operation operation, SchemaRegistry registry, ApiDescription apiDescription)
         {
             var responses = new Dictionary<string, Response>();
-            switch (apiDescription.RelativePath)
+            switch (apiDescription.RelativePath.Split('?')[0])
             {
                 case "test":
                     operation.summary = "检查 HTTP 服务";
                     operation.produces = new List<string> { "text/plain" };
                     responses.Add("200", Reply("服务正常，返回 Helloworld。", new Schema { type = "string" }));
+                    break;
+                case "GetEventLog":
+                    operation.summary = "读取本机 TIA Portal 操作日志";
+                    operation.description = "读取 SiemensAG-Automation-TIAPortal/Operational，最新优先；不打开 TIA 工程。";
+                    operation.produces = new List<string> { "application/json" };
+                    if (operation.parameters != null)
+                        foreach (var parameter in operation.parameters)
+                            if (parameter.name == "maximumEntries")
+                            {
+                                parameter.description = "读取条数，1 到 5000，默认 100。";
+                                parameter.@default = EventLogService.DefaultEntries;
+                                parameter.minimum = 1;
+                                parameter.maximum = EventLogService.MaximumEntries;
+                            }
+                    responses.Add("200", Reply("日志数组；无记录时为空数组。", registry.GetOrRegister(typeof(List<OperationLogEntry>))));
+                    BadRequest(responses, registry, "maximumEntries 必须为 1 到 5000 的整数。");
+                    responses.Add("403", Reply("没有读取本机 TIA Portal 操作日志的权限。"));
+                    responses.Add("503", Reply("本机日志通道不存在或事件日志不可用。"));
                     break;
                 case "getTags":
                     operation.summary = "读取 PLC 变量表标签";

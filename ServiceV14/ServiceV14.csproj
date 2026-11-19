@@ -2,66 +2,68 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
-	<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-	<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-	<ProjectGuid>{B48E104A-734E-4D8F-8F19-C647AB697452}</ProjectGuid>
-	<OutputType>WinExe</OutputType>
-	<RootNamespace>ServiceV14</RootNamespace>
-	<AssemblyName>ServiceV14</AssemblyName>
-	<StartupObject>ServiceV14.Program</StartupObject>
-	<TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
-	<LangVersion>7.3</LangVersion>
-	<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-	<Deterministic>true</Deterministic>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B48E104A-734E-4D8F-8F19-C647AB697452}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>ServiceV14</RootNamespace>
+    <AssemblyName>ServiceV14</AssemblyName>
+    <StartupObject>ServiceV14.Program</StartupObject>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-	<PlatformTarget>AnyCPU</PlatformTarget>
-	<Prefer32Bit>false</Prefer32Bit>
-	<DebugSymbols>true</DebugSymbols>
-	<DebugType>full</DebugType>
-	<Optimize>false</Optimize>
-	<OutputPath>bin\Debug\</OutputPath>
-	<DefineConstants>DEBUG;TRACE</DefineConstants>
-	<WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-	<PlatformTarget>AnyCPU</PlatformTarget>
-	<Prefer32Bit>false</Prefer32Bit>
-	<DebugType>pdbonly</DebugType>
-	<Optimize>true</Optimize>
-	<OutputPath>bin\Release\</OutputPath>
-	<DefineConstants>TRACE</DefineConstants>
-	<WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-	<PackageReference Include="Microsoft.AspNet.WebApi.OwinSelfHost" Version="5.2.9" />
-	<PackageReference Include="Microsoft.Owin.Cors" Version="4.2.2" />
-	<PackageReference Include="Swashbuckle.Core" Version="5.6.0" />
-	<Reference Include="System" />
-	<Reference Include="System.Core" />
-	<Reference Include="System.Configuration" />
-	<Reference Include="System.Drawing" />
-	<Reference Include="System.Windows.Forms" />
-	<Reference Include="System.Net.Http" />
-	<Reference Include="System.Xml" />
-	<Reference Include="System.Xml.Linq" />
-	<Reference Include="System.Data" />
-	<Reference Include="System.Data.DataSetExtensions" />
-	<Reference Include="Microsoft.CSharp" />
-	<Reference Include="Siemens.Engineering, Version=14.0.1.0, Culture=neutral, PublicKeyToken=d29ec89bac048f84, processorArchitecture=MSIL">
-	  <SpecificVersion>False</SpecificVersion>
-	  <HintPath>C:\Program Files\Siemens\Automation\Portal V14\PublicAPI\V14 SP1\Siemens.Engineering.dll</HintPath>
-	</Reference>
+    <PackageReference Include="Microsoft.AspNet.WebApi.OwinSelfHost" Version="5.2.9" />
+    <PackageReference Include="Microsoft.Owin.Cors" Version="4.2.2" />
+    <PackageReference Include="Swashbuckle.Core" Version="5.6.0" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Siemens.Engineering, Version=14.0.1.0, Culture=neutral, PublicKeyToken=d29ec89bac048f84, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files\Siemens\Automation\Portal V14\PublicAPI\V14 SP1\Siemens.Engineering.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-	<Compile Include="Program.cs" />
-	<Compile Include="TrayApplicationContext.cs" />
-	<Compile Include="Core\*.cs" />
-	<None Include="App.config" />
-	<None Include="README.md" />
-	<Content Include="tagsconfig.json">
-	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</Content>
+    <Compile Include="Program.cs" />
+    <None Include="tests\EventLogValidation.cs" />
+    <Compile Include="TrayApplicationContext.cs" />
+    <Compile Include="Core\*.cs" />
+    <None Include="App.config" />
+    <None Include="README.md" />
+    <Content Include="tagsconfig.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="tests\EventLogValidation.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

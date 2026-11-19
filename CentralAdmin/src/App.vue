@@ -4,6 +4,7 @@ import { getScan, getScans } from './api/discovery'
 import { getOperationLogs } from './api/eventLogs'
 import TagsPage from './TagsPage.vue'
 import ChangesHistoryPage from './ChangesHistoryPage.vue'
+import ServiceEventLogsPage from './ServiceEventLogsPage.vue'
 
 const currentTab = ref('scans')
 const selectedLogLevel = ref('all')
@@ -12,6 +13,7 @@ const navigation = [
   { tab: 'logs', hash: '#operation-logs', label: '操作日志' },
   { tab: 'tags', hash: '#plc-tags', label: 'PLC 变量' },
   { tab: 'changes', hash: '#changes-history', label: '更改历史' },
+  { tab: 'serviceLogs', hash: '#service-event-logs', label: 'ServiceV14 日志' },
 ]
 watch(currentTab, (tab) => {
   document.title = `CentralAdmin · ${navigation.find((item) => item.tab === tab).label}`
@@ -25,6 +27,8 @@ function syncTabFromHash() {
     currentTab.value = 'tags'
   } else if (hash === '#changes-history') {
     currentTab.value = 'changes'
+  } else if (hash === '#service-event-logs') {
+    currentTab.value = 'serviceLogs'
   } else {
     currentTab.value = 'scans'
   }
@@ -228,9 +232,15 @@ onUnmounted(() => {
         <span class="nav-symbol">↳</span> 更改历史
         <span v-if="currentTab === 'changes'" class="nav-active-dot"></span>
       </a>
+      <a class="nav-item" :class="{ active: currentTab === 'serviceLogs' }"
+        :aria-current="currentTab === 'serviceLogs' ? 'page' : undefined" href="#service-event-logs"
+        @click.prevent="switchTab('serviceLogs')">
+        <span class="nav-symbol">≡</span> ServiceV14 日志
+        <span v-if="currentTab === 'serviceLogs'" class="nav-active-dot"></span>
+      </a>
       <div class="sidebar-note">
         <span class="signal-dot"></span>
-        <span>数据源<br /><strong>{{ currentTab === 'tags' ? 'PLC 变量接口' : currentTab === 'changes' ? 'PLC 历史比较接口' : 'AutomationPlatform API' }}</strong></span>
+        <span>数据源<br /><strong>{{ currentTab === 'tags' ? 'PLC 变量接口' : currentTab === 'changes' ? 'PLC 历史比较接口' : currentTab === 'serviceLogs' ? 'ServiceV14 日志接口' : 'AutomationPlatform API' }}</strong></span>
       </div>
       <div class="sidebar-footer">CENTRALADMIN <span>·</span> READ ONLY</div>
     </aside>
@@ -246,12 +256,15 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'tags'" class="breadcrumb">
           工作空间 <span>/</span> 设备监控 <span>/</span> <strong>PLC 变量</strong>
         </div>
+        <div v-else-if="currentTab === 'serviceLogs'" class="breadcrumb">
+          工作空间 <span>/</span> 系统审计 <span>/</span> <strong>ServiceV14 日志</strong>
+        </div>
         <div v-else class="breadcrumb">
           工作空间 <span>/</span> 程序审计 <span>/</span> <strong>更改历史</strong>
         </div>
         <div class="topbar-right">
           <span class="topbar-live">
-            <i></i> {{ currentTab === 'scans' ? '历史数据' : currentTab === 'logs' ? '事件通道' : currentTab === 'tags' ? '变量定义' : '工程变更' }}
+            <i></i> {{ currentTab === 'scans' ? '历史数据' : currentTab === 'logs' || currentTab === 'serviceLogs' ? '事件通道' : currentTab === 'tags' ? '变量定义' : '工程变更' }}
           </span>
           <span class="topbar-divider"></span>
           <span>只读视图</span>
@@ -423,6 +436,7 @@ onUnmounted(() => {
       <KeepAlive>
         <TagsPage v-if="currentTab === 'tags'" />
         <ChangesHistoryPage v-else-if="currentTab === 'changes'" />
+        <ServiceEventLogsPage v-else-if="currentTab === 'serviceLogs'" />
       </KeepAlive>
     </main>
   </div>

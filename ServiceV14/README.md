@@ -19,5 +19,16 @@ Swagger 开关位于 ServiceV14.exe.config 的 appSettings/SwaggerEnabled。开�
 原 WindowsServiceV14 已恢复为独立的 Windows 服务实现，ServiceV14 保存自己的核心代码副本。两个程序不能同时监听相同 URL，使用托盘前停止原服务。单实例锁只约束当前会话，两个进程不共享内存缓存。
 历史及 PDF 缓存规则沿用原实现，托盘启动与文档加载不主动打开工程、比较或导出。
 
+## TIA Portal 操作日志
+GET `/GetEventLog?maximumEntries=100` 读取 ServiceV14 所在机器的 Windows 日志通道 `SiemensAG-Automation-TIAPortal/Operational`，不读取调用方机器的日志。省略 maximumEntries 默认为 100，仅接受 1–5000 的整数，按最新优先返回。
+
+成功响应为 JSON 数组，字段为 TimeCreated（可空时间）、User、Computer、EventContent、EventId、Level、Provider、RecordId。无记录返回 200 和空数组；非法参数返回 400；读取权限不足返回 403；通道不存在或事件日志不可用返回 503。运行账户需要该通道的读取权限；请由管理员按最小权限配置，不自动提权或扩大日志授权。
+
+示例：`http://配置IP:5736/GetEventLog?maximumEntries=100`。CentralAdmin 的独立 ServiceV14 日志页使用其前端来源配置直接访问本接口，因此浏览器必须能连接此地址并满足 CORS 和 HTTPS 混合内容限制。日志接口不打开 TIA 工程，不比较或导出，不影响 ChangesHistory.json 或内存缓存。Swagger 加载不读取日志。
+
 ## 验证
 验证 /test、/swagger/docs/v1、托盘菜单、重复启动提示和退出后重新启动。工程读取、比较和 PDF 需在实际部署环境另行验证。
+
+在 Visual Studio 开发人员命令提示符中运行 `msbuild ServiceV14\tests\EventLogValidation.csproj /t:Build /p:Configuration=Release /p:Platform=AnyCPU`，然后运行 `ServiceV14\tests\bin\Release\EventLogValidation.exe`；Debug 可替换配置名。验证项目复用现有依赖并自动生成绑定重定向，不需要安装测试包或放宽 PowerShell 执行策略。
+
+该验证使用内存 HttpServer，不占用监听端口，不启动托盘或 TIA 工程；只读本机真实日志，检查默认及 1/100/5000 条数、非法参数 400、八字段、最新优先、预取消、Swagger 和 /test。当前机器已成功读取 532 条日志。前端模拟测试另覆盖空数组、403/503 提示及取消/超时和过期响应。未修改账户权限、未清空或禁用日志通道，因此真实 403/503、空通道及长时间资源释放仍需部署环境验证；实际跨域直连也需在现场确认。未调用 GenerateChangesHistory 等真实工程操作，相关逻辑保持不变。

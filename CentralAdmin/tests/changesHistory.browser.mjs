@@ -43,6 +43,9 @@ let browser
 let socket
 let sessionId
 let historyRequests = 0
+let serviceLogRequests = 0
+let serviceLogError = false
+let serviceLogEmpty = false
 let errorMode = false
 let comparisonErrorMode = false
 let comparisonRequests = 0
@@ -125,6 +128,15 @@ try {
             State: comparisonErrorMode ? 'Failed' : request.method === 'POST' ? 'Queued' : 'Succeeded',
             Message: comparisonErrorMode ? '模拟 ACTCLI 比较失败' : 'PDF 报告已生成', ExpiresUtc: '2030-01-01T00:00:00Z' }
         }
+      } else if (request.url.includes('/GetEventLog')) {
+        serviceLogRequests++
+        status = serviceLogError ? 503 : 200
+        const limit = Number(new URL(request.url).searchParams.get('maximumEntries'))
+        value = serviceLogError ? '模拟日志服务不可用' : serviceLogEmpty ? [] : Array.from({ length: Math.min(60, limit) }, (_, index) => ({
+          TimeCreated: '2026-01-03T13:00:00.1234567Z', User: 'DOMAIN\\operator', Computer: 'TIA-PC',
+          EventContent: `<img src=x onerror=alert(1)>\n事件内容 ${index + 1}`, EventId: index + 1,
+          Level: index % 2 ? '警告' : '信息', Provider: 'Siemens', RecordId: String(60 - index),
+        }))
       } else if (request.url.includes('/api/discovery/scans')) {
         value = { items: [], totalCount: 0, page: 1, pageSize: 10 }
       }
@@ -144,12 +156,13 @@ try {
   await command('Network.setBlockedURLs', { urls: ['*fonts.googleapis.com*', '*fonts.gstatic.com*'] })
   await command('Fetch.enable', { patterns: [
     { urlPattern: '*/GenerateChangesHistory' }, { urlPattern: '*/getTags' }, { urlPattern: `${origin}/api/*` },
-    { urlPattern: '*/api/block-comparisons*' },
+    { urlPattern: '*/api/block-comparisons*' }, { urlPattern: '*/GetEventLog*' },
   ] })
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   await command('Page.navigate', { url: `${origin}/#changes-history` })
   await waitFor("document.querySelectorAll('.history-entry').length === 2 && document.querySelectorAll('.history-table tbody tr').length === 3")
   assert.equal(historyRequests, 1, 'first entry loads history once')
+  assert.equal(serviceLogRequests, 0, 'new log page is not prefetched')
   assert.equal(await evaluate("document.querySelectorAll('.compare-button').length"), 1, 'only modified ordinary blocks are clickable')
   await click('.compare-button')
   await waitFor("!!document.querySelector('.report-frame') && !!document.querySelector('.comparison-report a[download]')")
@@ -220,6 +233,50 @@ try {
   await waitFor("document.querySelector('#changes-history') !== null")
   assert.equal(historyRequests, 3)
   await writeFile(path.join(artifacts, 'mobile.png'), Buffer.from((await command('Page.captureScreenshot', { format: 'png' })).data, 'base64'))
+  await click('.mobile-navigation a[href="#service-event-logs"]')
+  await waitFor("document.querySelectorAll('.service-log-table tbody tr').length === 25")
+  assert.equal(serviceLogRequests, 1)
+  assert.equal(await evaluate('document.title'), 'CentralAdmin · ServiceV14 日志')
+  assert.equal(await evaluate("document.querySelectorAll('.service-log-table th').length"), 8)
+  assert.equal(await evaluate("document.querySelectorAll('.service-log-content img').length"), 0, 'event content is escaped, never rendered as HTML')
+  assert.ok((await body()).includes('<img src=x onerror=alert(1)>'))
+  assert.ok(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'log page does not overflow mobile viewport')
+  assert.ok(await evaluate("document.querySelector('.service-log-table-scroll').scrollWidth > document.querySelector('.service-log-table-scroll').clientWidth"))
+  await click('.service-log-panel .pager button:last-child')
+  await click('.service-log-panel .pager button:last-child')
+  await waitFor("document.querySelectorAll('.service-log-table tbody tr').length === 10")
+  await evaluate("document.querySelector('#service-log-keyword').value='事件内容 60'; document.querySelector('#service-log-keyword').dispatchEvent(new Event('input',{bubbles:true}))")
+  await waitFor("document.querySelectorAll('.service-log-table tbody tr').length === 1")
+  await evaluate("document.querySelector('#service-log-keyword').value=''; document.querySelector('#service-log-keyword').dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('#service-log-level').value='warning'; document.querySelector('#service-log-level').dispatchEvent(new Event('change',{bubbles:true}))")
+  await waitFor("document.querySelector('.service-log-panel .panel-subhead').innerText.includes('匹配 30 / 60')")
+  await click('.mobile-navigation a[href="#operation-logs"]')
+  await waitFor("document.querySelector('#operation-logs') !== null")
+  await click('.mobile-navigation a[href="#service-event-logs"]')
+  await waitFor("document.querySelectorAll('.service-log-table tbody tr').length === 25")
+  assert.equal(serviceLogRequests, 1, 'returning retains cached logs and filters')
+  serviceLogError = true
+  await click('.service-logs-dashboard .title-row button')
+  await waitFor("document.querySelector('.service-logs-dashboard').innerText.includes('显示旧快照')")
+  assert.equal(await evaluate("document.querySelectorAll('.service-log-table tbody tr').length"), 25)
+  assert.ok((await body()).includes('通道'))
+  serviceLogError = false
+  for (const limit of ['0', '5001', '1.5', '']) {
+    await evaluate(`document.querySelector('#service-log-limit').value=${JSON.stringify(limit)}; document.querySelector('#service-log-limit').dispatchEvent(new Event('input',{bubbles:true}))`)
+    await waitFor("document.querySelector('.service-logs-dashboard .title-row button').disabled")
+  }
+  assert.equal(serviceLogRequests, 2, 'invalid limits do not send requests')
+  await evaluate("document.querySelector('#service-log-level').value='all'; document.querySelector('#service-log-level').dispatchEvent(new Event('change',{bubbles:true})); document.querySelector('#service-log-limit').value='1'; document.querySelector('#service-log-limit').dispatchEvent(new Event('input',{bubbles:true}))")
+  await click('.service-logs-dashboard .title-row button')
+  await waitFor("document.querySelectorAll('.service-log-table tbody tr').length === 1 && !document.querySelector('.service-logs-dashboard .title-row button').disabled")
+  serviceLogEmpty = true
+  await click('.service-logs-dashboard .title-row button')
+  await waitFor("document.querySelector('.service-logs-dashboard').innerText.includes('暂无日志记录')")
+  await writeFile(path.join(artifacts, 'service-logs-mobile.png'), Buffer.from((await command('Page.captureScreenshot', { format: 'png' })).data, 'base64'))
+  await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
+  await command('Page.navigate', { url: `${origin}/#service-event-logs` })
+  await waitFor("document.querySelector('.service-logs-dashboard')?.innerText.includes('暂无日志记录')")
+  assert.equal(await evaluate('document.title'), 'CentralAdmin · ServiceV14 日志')
+  console.log('PASS: ServiceV14 direct hash, eight text-only fields, filters, pagination, cached return, stale snapshot, invalid limits, empty logs and mobile layout')
   assert.equal(exceptions.length, 0, `no browser runtime exceptions: ${JSON.stringify(exceptions)}`)
   assert.equal(failures.length, 0, `no mock transport errors: ${failures}`)
   console.log('PASS: mobile navigation, keyboard activation, internal table scrolling, no viewport overflow or runtime exceptions')
