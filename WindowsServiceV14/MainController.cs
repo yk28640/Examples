@@ -24,14 +24,6 @@ namespace WindowsServiceV14
         private static readonly object TagsLock = new object();
         private static List<TagInfo> cachedTags;
 
-        // 缓存格式或比较语义变化时，通过版本号拒绝复用旧历史。
-        private const int HistoryCacheVersion = 3;
-        // 串行化历史生成与已发布导出查询，保持内存、磁盘及导出引用的一致性。
-        private static readonly object HistoryLock = new object();
-        private static string cachedHistoryPath;
-        private static ChangesHistoryDocument cachedHistory;
-
-        /// <summary>仅检查 HTTP 服务可用性，不访问 TIA 工程。</summary>
         [HttpGet]
         [Route("test")]
         public HttpResponseMessage Get()
@@ -113,7 +105,6 @@ namespace WindowsServiceV14
             }
         }
 
-        /// <summary>获取或增量生成相邻工程版本的比较历史，优先复用内存及磁盘缓存。</summary>
         [HttpGet]
         [Route("GenerateChangesHistory")]
         public IHttpActionResult GenerateChangesHistory()
@@ -148,7 +139,6 @@ namespace WindowsServiceV14
             }
         }
 
-        /// <summary>按工程指纹复用历史，仅对缺少结果的相邻版本调用比较委托。</summary>
         private static ChangesHistoryDocument GetChangesHistory(string folder,
             Func<FileInfo, FileInfo, List<PlcComparison>> compareProjects)
         {
@@ -160,8 +150,7 @@ namespace WindowsServiceV14
                 if (projects.Count < 2)
                     throw new InvalidDataException("比较目录中至少需要两个 .ap14 工程文件。");
 
-                // 同一路径优先复用内存，否则读取服务端 JSON；正常请求不强制重新比较或导出。
-                var existing = cachedHistory != null && string.Equals(cachedHistoryPath, cachePath, StringComparison.OrdinalIgnoreCase)
+                var existing = string.Equals(cachedHistoryPath, cachePath, StringComparison.OrdinalIgnoreCase)
                     ? cachedHistory : LoadHistoryCache(cachePath);
                 if (existing != null && existing.Version != HistoryCacheVersion)
                     existing = null;
@@ -177,116 +166,53 @@ namespace WindowsServiceV14
                     }
                 }
 
-                // 复用键包含新旧两份工程的完整指纹，防止把旧版本结果用于新文件。
                 var changed = existing == null || !SameHistoryProjects(existing.Projects, projects)
                     || existing.Entries.Count != projects.Count - 1;
-                if (!changed && Enumerable.Range(1, projects.Count - 1).All(index =>
-                    reusable.ContainsKey(GetHistoryPairKey(projects[index - 1], projects[index]))))
-                {
-                    // 历史完全命中时只补回缺失的 JSON；不因 XML 丢失自动重建导出。
-                    if (!File.Exists(cachePath)) SaveHistoryCache(cachePath, existing);
-                    cachedHistoryPath = cachePath;
-                    cachedHistory = existing;
-                    return existing;
-                }
                 var entries = new List<ChangesHistoryEntry>();
-                var newExports = new List<string>();
-                var published = false;
-                try
+                for (var i = 1; i < projects.Count; i++)
                 {
-                    for (var i = 1; i < projects.Count; i++)
+                    var previous = projects[i - 1];
+                    var latest = projects[i];
+                    ChangesHistoryEntry entry;
+                    if (!reusable.TryGetValue(GetHistoryPairKey(previous, latest), out entry))
                     {
-                        var previous = projects[i - 1];
-                        var latest = projects[i];
-                        ChangesHistoryEntry entry;
-                        if (!reusable.TryGetValue(GetHistoryPairKey(previous, latest), out entry))
+                        var comparisons = compareProjects(new FileInfo(latest.Path), new FileInfo(previous.Path));
+                        entry = new ChangesHistoryEntry
                         {
-                            var comparisons = compareProjects(new FileInfo(latest.Path), new FileInfo(previous.Path));
-                            newExports.AddRange(comparisons.SelectMany(item => item.Result.Elements)
-                                .Where(node => node.ExportId != null).Select(node => node.ExportId));
-                            entry = new ChangesHistoryEntry
-                            {
-                                PreviousProject = previous,
-                                LatestProject = latest,
-                                ComparedAtUtc = DateTime.UtcNow,
-                                Comparisons = comparisons
-                            };
-                            changed = true;
-                        }
-                        entries.Add(entry);
+                            PreviousProject = previous,
+                            LatestProject = latest,
+                            ComparedAtUtc = DateTime.UtcNow,
+                            Comparisons = comparisons
+                        };
+                        changed = true;
                     }
-                    // 比较可能耗时，发布前重新扫描目录，拒绝把跨版本结果写入历史。
-                    if (!SameHistoryProjects(projects, GetHistoryProjects(folder)))
-                        throw new HistoryChangedException("比较期间工程文件发生变化，未更新历史缓存，请稍后重试。");
-
-                    var document = new ChangesHistoryDocument
-                    {
-                        Version = HistoryCacheVersion,
-                        GeneratedAtUtc = changed ? DateTime.UtcNow : existing.GeneratedAtUtc,
-                        Projects = projects,
-                        Entries = entries
-                    };
-                    if (changed || !File.Exists(cachePath))
-                        SaveHistoryCache(cachePath, document);
-
-                    cachedHistoryPath = cachePath;
-                    cachedHistory = document;
-                    published = true;
-                    return document;
+                    entries.Add(entry);
                 }
-                finally
+
+                if (!SameHistoryProjects(projects, GetHistoryProjects(folder)))
+                    throw new HistoryChangedException("比较期间工程文件发生变化，未更新历史缓存，请稍后重试。");
+
+                var document = new ChangesHistoryDocument
                 {
-                    // 只回收本次新导出的文件，不能删除复用历史仍引用的导出。
-                    if (!published)
-                        foreach (var id in newExports) BlockExportStore.Delete(id);
-                }
+                    Version = HistoryCacheVersion,
+                    GeneratedAtUtc = changed ? DateTime.UtcNow : existing.GeneratedAtUtc,
+                    Projects = projects,
+                    Entries = entries
+                };
+                if (changed || !File.Exists(cachePath))
+                    SaveHistoryCache(cachePath, document);
+
+                cachedHistoryPath = cachePath;
+                cachedHistory = document;
+                return document;
             }
         }
 
-        /// <summary>确认导出清单与历史中的设备、块名称及工程版本对一致。</summary>
-        private static bool ExportMatches(ChangesHistoryEntry entry, string device, ComparisonNode node)
-        {
-            var manifest = BlockExportStore.Load(node.ExportId);
-            return manifest != null && manifest.Device == device && manifest.BlockName == node.LeftName
-                && GetHistoryPairKey(manifest.PreviousProject, manifest.LatestProject)
-                    == GetHistoryPairKey(entry.PreviousProject, entry.LatestProject);
-        }
-
-        /// <summary>只返回当前有效历史引用的导出；历史更新中快速拒绝，不等待或触发重建。</summary>
-        internal static BlockExportManifest GetPublishedExport(string id)
-        {
-            if (!BlockExportStore.IsId(id)) return null;
-            // 不在工作线程中长时间等待历史比较，交由调用方提示稍后重试。
-            if (!System.Threading.Monitor.TryEnter(HistoryLock))
-                throw new InvalidOperationException("历史正在更新，请稍后重试。");
-            try
-            {
-                var folder = TagProjectConfiguration.LoadComparasionFolder();
-                var path = Path.Combine(Path.GetFullPath(folder), "ChangesHistory.json");
-                var document = string.Equals(path, cachedHistoryPath, StringComparison.OrdinalIgnoreCase)
-                    ? cachedHistory : LoadHistoryCache(path);
-                if (document == null || document.Version != HistoryCacheVersion
-                    || !SameHistoryProjects(document.Projects, GetHistoryProjects(folder))) return null;
-                foreach (var entry in document.Entries)
-                {
-                    if (entry?.Comparisons == null) continue;
-                    foreach (var item in entry.Comparisons.Where(item => item?.Result?.Elements != null))
-                        foreach (var node in item.Result.Elements.Where(IsModifiedBlock))
-                            if (node.ExportId == id && ExportMatches(entry, item.Device, node))
-                                return BlockExportStore.Load(id);
-                }
-                return null;
-            }
-            finally { System.Threading.Monitor.Exit(HistoryLock); }
-        }
-
-        /// <summary>表示比较期间来源文件发生变化，结果不能作为稳定历史发布。</summary>
         private class HistoryChangedException : Exception
         {
             public HistoryChangedException(string message) : base(message) { }
         }
 
-        /// <summary>读取当前格式的历史 JSON；格式无效时返回空值，由生成流程决定重建。</summary>
         private static ChangesHistoryDocument LoadHistoryCache(string path)
         {
             if (!File.Exists(path))
@@ -311,7 +237,6 @@ namespace WindowsServiceV14
             }
         }
 
-        /// <summary>先写同目录临时文件，再替换正式历史，避免发布半写入的 JSON。</summary>
         private static void SaveHistoryCache(string path, ChangesHistoryDocument document)
         {
             var temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -338,7 +263,6 @@ namespace WindowsServiceV14
             }
         }
 
-        /// <summary>递归扫描 .ap14 工程，按 UTC 修改时间和路径稳定排序，以便比较相邻版本。</summary>
         private static List<HistoryProjectFile> GetHistoryProjects(string folder)
         {
             return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
@@ -355,7 +279,6 @@ namespace WindowsServiceV14
                 .ToList();
         }
 
-        /// <summary>比较有序工程指纹列表；不读取工程内部内容。</summary>
         private static bool SameHistoryProjects(List<HistoryProjectFile> left, List<HistoryProjectFile> right)
         {
             return left != null && right != null
@@ -363,39 +286,6 @@ namespace WindowsServiceV14
                     StringComparison.Ordinal);
         }
 
-        /// <summary>序列化有方向的新旧版本对，作为历史复用和导出归属校验键。</summary>
-        private static string GetHistoryPairKey(HistoryProjectFile previous, HistoryProjectFile latest)
-        {
-            return JsonConvert.SerializeObject(new[] { previous, latest });
-        }
-
-        /// <summary>工程文件的轻量版本指纹；路径、时间和长度均参与历史复用判断。</summary>
-        public class HistoryProjectFile
-        {
-            public string Path { get; set; }
-            public DateTime ModifiedUtc { get; set; }
-            public long Length { get; set; }
-        }
-
-        /// <summary>一对相邻版本的比较结果及实际比较时间。</summary>
-        public class ChangesHistoryEntry
-        {
-            public HistoryProjectFile PreviousProject { get; set; }
-            public HistoryProjectFile LatestProject { get; set; }
-            public DateTime ComparedAtUtc { get; set; }
-            public List<PlcComparison> Comparisons { get; set; }
-        }
-
-        /// <summary>同时用于磁盘持久化和 API 返回的完整历史文档。</summary>
-        public class ChangesHistoryDocument
-        {
-            public int Version { get; set; }
-            public DateTime GeneratedAtUtc { get; set; }
-            public List<HistoryProjectFile> Projects { get; set; }
-            public List<ChangesHistoryEntry> Entries { get; set; }
-        }
-
-        /// <summary>执行两工程比较，异常退出时回收本次已记录的新导出。</summary>
         private static List<PlcComparison> CompareProjects(FileInfo latestFile, FileInfo previousFile)
         {
             var exports = new List<string>();
@@ -435,30 +325,41 @@ namespace WindowsServiceV14
                         var comparisons = new List<PlcComparison>();
                         foreach (var pair in latestPlcs.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
                         {
-                            var latestObjects = FindComparisonObjects(pair.Value);
-                            var previousObjects = FindComparisonObjects(previousPlcs[pair.Key]);
-                            var result = CompareObjects(pair.Key, latestObjects, previousObjects);
-                            foreach (var node in result.Elements.Where(IsModifiedBlock))
+                            var latestBlocks = FindBlocks(pair.Value);
+                            var previousBlocks = FindBlocks(previousPlcs[pair.Key]);
+                            var root = new ComparisonNode
                             {
-                                try
+                                LeftName = pair.Key,
+                                RightName = pair.Key,
+                                ComparisonResult = "Identical",
+                                Elements = new List<ComparisonNode>()
+                            };
+                            foreach (var name in latestBlocks.Keys.Union(previousBlocks.Keys, StringComparer.OrdinalIgnoreCase)
+                                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+                            {
+                                DateTime latestDate;
+                                DateTime previousDate;
+                                var inLatest = latestBlocks.TryGetValue(name, out latestDate);
+                                var inPrevious = previousBlocks.TryGetValue(name, out previousDate);
+                                var status = !inLatest ? "Removed" : !inPrevious ? "Added"
+                                    : latestDate == previousDate ? "Identical" : "Different";
+                                if (status != "Identical")
+                                    root.ComparisonResult = "Different";
+
+                                root.Elements.Add(new ComparisonNode
                                 {
-                                    node.ExportId = BlockExportStore.Export(pair.Key, node.LeftName,
-                                        previousObjects["Block/" + node.RightName].Block,
-                                        latestObjects["Block/" + node.LeftName].Block,
-                                        previousVersion, latestVersion);
-                                    exports.Add(node.ExportId);
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Trace.TraceError("导出修改程序块失败 {0}/{1}: {2}", pair.Key, node.LeftName, ex);
-                                    // 单个块导出失败仍保留比较结果，并向调用方标记该块无法继续比较。
-                                    node.ExportError = "无法导出新旧程序块 XML，请检查块保护状态和服务端日志。";
-                                }
+                                    LeftName = inLatest ? name : null,
+                                    RightName = inPrevious ? name : null,
+                                    ComparisonResult = status,
+                                    LatestModifiedDate = inLatest ? (DateTime?)latestDate : null,
+                                    PreviousModifiedDate = inPrevious ? (DateTime?)previousDate : null,
+                                    Elements = new List<ComparisonNode>()
+                                });
                             }
                             comparisons.Add(new PlcComparison
                             {
                                 Device = pair.Key,
-                                Result = result
+                                Result = root
                             });
                         }
                         if (!BlockExportStore.Unchanged(latestVersion) || !BlockExportStore.Unchanged(previousVersion))
@@ -507,7 +408,6 @@ namespace WindowsServiceV14
                 FindPlcs(child, deviceName, plcs);
         }
 
-        /// <summary>按对象键和修改时间生成增删改结果；不执行块内容的逐项语义比较。</summary>
         private static ComparisonNode CompareObjects(string deviceName,
             Dictionary<string, ComparisonObjectSnapshot> latestObjects,
             Dictionary<string, ComparisonObjectSnapshot> previousObjects)
@@ -526,7 +426,6 @@ namespace WindowsServiceV14
                 ComparisonObjectSnapshot previous;
                 var inLatest = latestObjects.TryGetValue(key, out latest);
                 var inPrevious = previousObjects.TryGetValue(key, out previous);
-                // 左侧为最新版本，右侧为旧版本；同键对象仅依据 ModifiedDate 判断是否不同。
                 var status = !inLatest ? "Removed" : !inPrevious ? "Added"
                     : latest.ModifiedDate == previous.ModifiedDate ? "Identical" : "Different";
                 if (status != "Identical")
@@ -545,8 +444,7 @@ namespace WindowsServiceV14
             return root;
         }
 
-        /// <summary>收集普通块及工艺对象，形成用于比较的轻量快照索引。</summary>
-        private static Dictionary<string, ComparisonObjectSnapshot> FindComparisonObjects(PlcSoftware plcSoftware)
+        private static Dictionary<string, DateTime> FindBlocks(PlcSoftware plcSoftware)
         {
             var objects = new Dictionary<string, ComparisonObjectSnapshot>(StringComparer.OrdinalIgnoreCase);
             AppendBlocks(plcSoftware.BlockGroup, "", objects);
@@ -557,55 +455,18 @@ namespace WindowsServiceV14
             return objects;
         }
 
-        /// <summary>递归块组，以组路径区分普通块，并保留当前工程内的块引用供 XML 导出。</summary>
-        private static void AppendBlocks(PlcBlockGroup group, string groupPath,
-            Dictionary<string, ComparisonObjectSnapshot> objects)
+        private static void AppendBlocks(PlcBlockGroup group, string groupPath, Dictionary<string, DateTime> blocks)
         {
             foreach (PlcBlock block in group.Blocks)
-            { 
-                var technologicalObject = block as TechnologicalInstanceDB;
-                if (technologicalObject != null)
-                    AddComparisonObject(objects, technologicalObject.Name, "TechnologicalObject", technologicalObject.ModifiedDate);
-                else
-                {
-                    AddComparisonObject(objects, groupPath + block.Name, "Block", block.ModifiedDate);
-                    objects["Block/" + groupPath + block.Name].Block = block;
-                }
+            {
+                var name = groupPath + block.Name;
+                if (blocks.ContainsKey(name))
+                    throw new PlcPairingException("存在重复的程序块: " + name);
+                blocks.Add(name, block.ModifiedDate);
             }
 
             foreach (PlcBlockUserGroup child in group.Groups)
-                AppendBlocks(child, groupPath + child.Name + "/", objects);
-        }
-
-        /// <summary>按类型和名称登记对象，去重一致的工艺对象，并拒绝其他重复或冲突。</summary>
-        private static void AddComparisonObject(Dictionary<string, ComparisonObjectSnapshot> objects,
-            string name, string objectType, DateTime modifiedDate)
-        {
-            var key = objectType + "/" + name;
-            ComparisonObjectSnapshot existing;
-            if (objects.TryGetValue(key, out existing))
-            {
-                // 工艺对象可能同时出现在块组和工艺对象组中，只统计一次。
-                if (objectType == "TechnologicalObject" && existing.ModifiedDate == modifiedDate)
-                    return;
-                throw new PlcPairingException("存在重复或不一致的比较对象: " + name);
-            }
-            objects.Add(key, new ComparisonObjectSnapshot
-            {
-                Name = name,
-                ObjectType = objectType,
-                ModifiedDate = modifiedDate
-            });
-        }
-
-        /// <summary>比较阶段的对象快照；Block 仅在所属工程保持打开时用于导出。</summary>
-        private class ComparisonObjectSnapshot
-        {
-            public string Name { get; set; }
-            public string ObjectType { get; set; }
-            public DateTime ModifiedDate { get; set; }
-            [JsonIgnore]
-            public PlcBlock Block { get; set; }
+                AppendBlocks(child, groupPath + child.Name + "/", blocks);
         }
 
         /// <summary>一个设备的 PLC 比较结果。</summary>
@@ -624,10 +485,6 @@ namespace WindowsServiceV14
         /// <summary>PLC 或对象级结果节点；块导出标识供异步比较接口使用。</summary>
         public class ComparisonNode
         {
-            public string ObjectType { get; set; }
-            public string ExportId { get; set; }
-            public string ExportError { get; set; }
-            /// <summary>最新版本中的对象名称；已删除对象没有左侧名称。</summary>
             public string LeftName { get; set; }
             /// <summary>旧版本中的对象名称；新增对象没有右侧名称。</summary>
             public string RightName { get; set; }
