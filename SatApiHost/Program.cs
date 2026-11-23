@@ -26,18 +26,17 @@ app.MapGet("/health", (HttpContext context) =>
 
     return Results.Ok(new { status = "ok" });
 });
-app.MapGet("/api/sat/adapters", (HttpContext context) =>
-{
-    if (token is not null && !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(token),
-            Encoding.UTF8.GetBytes(context.Request.Headers["X-Sat-Token"].ToString())))
-        return Results.Unauthorized();
+bool IsAuthorized(HttpContext context) => token is null || CryptographicOperations.FixedTimeEquals(
+    Encoding.UTF8.GetBytes(token), Encoding.UTF8.GetBytes(context.Request.Headers["X-Sat-Token"].ToString()));
 
-    return SatAdapters.List(app.Logger);
-});
+app.MapGet("/api/sat/adapters", (HttpContext context) => IsAuthorized(context)
+    ? SatAdapters.List(app.Logger) : Results.Unauthorized());
+app.MapPost("/api/sat/scan", (HttpContext context, SatScanRequest request) => IsAuthorized(context)
+    ? SatAdapters.Scan(request.Adapter, app.Logger, context.RequestAborted) : Results.Unauthorized());
 
 app.Run();
 
-internal static class SatAdapters
+internal static partial class SatAdapters
 {
     private static readonly object SdkLock = new();
 

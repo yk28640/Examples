@@ -19,7 +19,7 @@ Swagger 开关位于 ServiceV14.exe.config 的 appSettings/SwaggerEnabled。开�
 原 WindowsServiceV14 已恢复为独立的 Windows 服务实现，ServiceV14 保存自己的核心代码副本。两个程序不能同时监听相同 URL，使用托盘前停止原服务。单实例锁只约束当前会话，两个进程不共享内存缓存。
 历史及 PDF 缓存规则沿用原实现，托盘启动与文档加载不主动打开工程、比较或导出。
 
-## SAT 网卡查询
+## SAT 网卡查询和设备扫描
 
 构建 ServiceV14 后，从解决方案目录发布完整 SAT 宿主：
 
@@ -27,7 +27,13 @@ Swagger 开关位于 ServiceV14.exe.config 的 appSettings/SwaggerEnabled。开�
 
 部署时保留 `ServiceV14.exe` 旁的整个 `SatApiHost` 子目录，不要只复制 EXE。目标机还需要 x64 ASP.NET Core Runtime 10。启动托盘后会后台启动 SAT 子进程；退出托盘时，只停止本次启动的子进程。`127.0.0.1:5737` 必须空闲；缺少宿主、端口冲突或宿主退出不影响原有 TIA 接口。
 
-调用 `GET http://配置IP:5736/api/sat/adapters` 读取服务器网卡名称和 SDK 警告。ServiceV14 仅转发此固定路径，保留上游状态码和 JSON；无法连接或宿主未就绪返回 `503`，查询超时返回 `504`。局域网调用无需令牌；内部令牌不对外公开。只在可信局域网部署，并将 ServiceV14 监听端口的防火墙来源限制到受信任地址。
+1. 调用 `GET http://配置IP:5736/api/sat/adapters`，从 `adapters` 数组复制服务器网卡原名。
+2. 在 `ServiceV14.exe` 同目录的 `tagsconfig.json` 设置 `sat.scanAdapter`。默认留空；保存后下一次扫描即使用新值，无需重启。
+3. 调用 `POST http://配置IP:5736/api/sat/scan`，无需请求体。不接受客户端指定网卡或凭据，不会在服务启动时扫描。
+
+扫描返回 `adapter`、`succeeded`、`warning` 和 `devices`。非 CPU 仅返回基本信息；CPU 状态刷新成功后尝试读取 `operatingMode` 和 `memoryUsage`。读取不到的值为 `null`，原因见设备的 `warnings`。内存返回 SDK 的原始无符号整数，分别提供装载、工作、代码工作、数据工作、保持性内存的总量与已用量；未换算，单位请按现场 SDK 文档核对。扫描失败仍可能返回部分设备，请检查 `succeeded`。
+
+ServiceV14 仅转发这两个固定路径，保留上游状态码和 JSON。扫描网卡未配置或不可用返回 `409`，SDK 正忙返回 `429`，宿主不可用返回 `503`，请求超时返回 `504`（网卡枚举 10 秒，扫描 90 秒）。超时后要等同步 SDK 调用结束才能再次扫描。局域网调用无需令牌；内部令牌不对外公开。只在获准的设备网段扫描，并将 ServiceV14 监听端口的防火墙来源限制到受信任地址。
 
 ## TIA Portal 操作日志
 GET `/GetEventLog?maximumEntries=100` 读取 ServiceV14 所在机器的 Windows 日志通道 `SiemensAG-Automation-TIAPortal/Operational`，不读取调用方机器的日志。省略 maximumEntries 默认为 100，仅接受 1–5000 的整数，按最新优先返回。

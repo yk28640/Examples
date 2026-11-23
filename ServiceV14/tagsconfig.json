@@ -2,6 +2,9 @@
     "projectPath": "E:\\projects\\V14PrjTest20261012\\V14PrjTest20261012.ap14",
     "comparasionFolder": "F:\\comparasionFolder",
     "listenIp": "localhost",
+    "sat": {
+        "scanAdapter": "Microsoft Hyper-V Network Adapter.TCPIP.Auto.2"
+    },
     "blockComparison": {
         "ExecutablePath": "C:\\Program Files\\Siemens\\Automation\\SIMATIC Automation Compare Tool\\app-1.4.0\\ACT-CLI\\ACTCLI.exe",
         "TimeoutSeconds": 180,

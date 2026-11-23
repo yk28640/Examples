@@ -22,6 +22,17 @@ namespace ServiceV14
         [JsonProperty("blockComparison")]
         public BlockComparisonOptions BlockComparison { get; set; }
 
+        [JsonProperty("sat")]
+        public SatOptions Sat { get; set; }
+
+        internal static string LoadSatScanAdapter() => Load()?.Sat?.ScanAdapter;
+
+        internal sealed class SatOptions
+        {
+            [JsonProperty("scanAdapter")]
+            public string ScanAdapter { get; set; }
+        }
+
         /// <summary>加载比较资源限制，缺少该配置节时使用默认值，再统一校验范围。</summary>
         internal static BlockComparisonOptions LoadBlockComparison()
         {

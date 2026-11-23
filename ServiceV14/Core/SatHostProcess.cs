@@ -93,7 +93,14 @@ namespace ServiceV14
             }
         }
 
-        internal async Task<HttpResponseMessage> GetAdaptersAsync(CancellationToken cancellationToken)
+        internal Task<HttpResponseMessage> GetAdaptersAsync(CancellationToken cancellationToken) =>
+            ForwardAsync(HttpMethod.Get, "api/sat/adapters", null, TimeSpan.FromSeconds(10), cancellationToken);
+
+        internal Task<HttpResponseMessage> ScanAsync(string adapter, CancellationToken cancellationToken) =>
+            ForwardAsync(HttpMethod.Post, "api/sat/scan", new { adapter }, TimeSpan.FromSeconds(90), cancellationToken);
+
+        private async Task<HttpResponseMessage> ForwardAsync(HttpMethod method, string path, object body,
+            TimeSpan requestTimeout, CancellationToken cancellationToken)
         {
             string sessionToken;
             lock (gate)
@@ -104,10 +111,12 @@ namespace ServiceV14
             }
 
             using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-            using (var request = new HttpRequestMessage(HttpMethod.Get, "api/sat/adapters"))
+            using (var request = new HttpRequestMessage(method, path))
             {
-                timeout.CancelAfter(TimeSpan.FromSeconds(10));
+                timeout.CancelAfter(requestTimeout);
                 request.Headers.Add("X-Sat-Token", sessionToken);
+                if (body != null)
+                    request.Content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
                 try
                 {
                     using (var upstream = await Client.SendAsync(request, timeout.Token).ConfigureAwait(false))

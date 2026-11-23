@@ -29,4 +29,17 @@
 		   Text="Missing SAT SDK native library: $(SatSdkBin)\%(SatNativeLibrary.Identity). Set SatSdkBin to the Windows x64 SDK directory." />
   </Target>
 
+	<Target Name="DeploySatApiHostToServiceV14Debug"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug'
+                     and '$(DesignTimeBuild)' != 'true'
+                     and '$(SkipServiceV14Deploy)' != 'true'
+                     and '$(IsPublishing)' != 'true'">
+		<PropertyGroup>
+			<ServiceV14SatDir>$(MSBuildProjectDirectory)\..\ServiceV14\bin\Debug\SatApiHost</ServiceV14SatDir>
+		</PropertyGroup>
+
+		<Message Importance="high" Text="正在发布 SAT 宿主到 $(ServiceV14SatDir)" />
+		<Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c Debug -r win-x64 --no-build --self-contained false -p:SkipServiceV14Deploy=true -o &quot;$(ServiceV14SatDir)&quot;" />
+	</Target>
 </Project>
