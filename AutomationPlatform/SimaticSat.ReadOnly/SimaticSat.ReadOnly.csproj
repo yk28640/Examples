@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SatSdkBin Condition="'$(SatSdkBin)' == ''">$(ProgramW6432)\Siemens\Automation\SIMATIC Automation Tool\Bin</SatSdkBin>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="SIMATICAutomationToolAPI">
+      <HintPath>$(SatSdkBin)\SIMATICAutomationToolAPI.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireSatSdk" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(SatSdkBin)\SIMATICAutomationToolAPI.dll')"
+           Text="SIMATICAutomationToolAPI.dll not found. Set SatSdkBin to the Siemens SAT SDK V5.0 SP4 Windows x64 Bin directory." />
+  </Target>
+</Project>

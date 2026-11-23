@@ -9,6 +9,15 @@ namespace ServiceV14
     /// <summary>构建 OWIN 自托管管线，注册 API、可选文档及比较请求限制。</summary>
     public class Startup
     {
+        private readonly SatHostProcess satHost;
+
+        public Startup() { }
+
+        internal Startup(SatHostProcess satHost)
+        {
+            this.satHost = satHost;
+        }
+
         /// <summary>配置宿主生命周期回调和中间件；此过程不打开 TIA 工程。</summary>
         public void Configuration(IAppBuilder appBuilder)
         {
@@ -19,6 +28,8 @@ namespace ServiceV14
                 && stopping is System.Threading.CancellationToken)
                 ((System.Threading.CancellationToken)stopping).Register(BlockComparisonService.StopHost);
             var config = new HttpConfiguration();
+            if (satHost != null)
+                config.Properties[SatHostProcess.ConfigurationKey] = satHost;
             config.MapHttpAttributeRoutes();
             // 开关仅在启动时读取；缺失或无效值保持关闭，不单独暴露文档入口。
             bool swaggerEnabled;

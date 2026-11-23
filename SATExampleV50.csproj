@@ -50,6 +50,9 @@
 	  <Compile Remove="ServiceV14\**" />
 	  <EmbeddedResource Remove="ServiceV14\**" />
 	  <None Remove="ServiceV14\**" />
+	  <Compile Remove="SatApiHost\**" />
+	  <EmbeddedResource Remove="SatApiHost\**" />
+	  <None Remove="SatApiHost\**" />
 	  <Compile Remove="Tests\BlockComparisonValidation\**" />
 	</ItemGroup>
 
